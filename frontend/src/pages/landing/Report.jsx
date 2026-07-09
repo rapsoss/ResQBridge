@@ -434,11 +434,21 @@ export default function Report() {
             <textarea
               rows={4}
               value={form.description}
+              maxLength={1000}
               onChange={update('description')}
-              className="mt-1.5 w-full resize-y rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+              className={`mt-1.5 w-full resize-y rounded-lg border px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-1 ${
+                form.description.length >= 900
+                  ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-500'
+                  : 'border-gray-300 focus:border-green-500 focus:ring-green-500'
+              }`}
               placeholder="Briefly describe what happened, including the wildlife's condition, behavior, surroundings, or any important details."
               required
             />
+            <div className="mt-1 flex justify-end">
+              <span className={`text-xs ${form.description.length >= 900 ? 'font-bold text-amber-600' : 'text-gray-400'}`}>
+                {1000 - form.description.length} / 1000
+              </span>
+            </div>
           </div>
 
           <div>
