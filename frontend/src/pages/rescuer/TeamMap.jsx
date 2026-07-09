@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { GoogleMap, useLoadScript } from '@react-google-maps/api'
 import { useAuth } from '../../context/AuthContext'
 import { useLocationContext } from '../../context/LocationContext'
@@ -34,6 +34,12 @@ export default function TeamMap() {
     mapRef.current = map
     setMapReady(true)
   }, [])
+
+  const mapEl = useMemo(() => (
+    <div className="rounded-xl overflow-hidden border-2 border-gray-200" style={{ height: '70vh' }}>
+      <GoogleMap mapContainerStyle={containerStyle} defaultCenter={DEFAULT_CENTER} defaultZoom={12} onLoad={onMapLoad} />
+    </div>
+  ), [])
 
   useEffect(() => {
     const g = window.google
@@ -122,9 +128,7 @@ export default function TeamMap() {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Team Map</h1>
           <p className="mt-1 text-lg text-gray-500">See other rescuers in your area ({rescuers.length} online)</p>
         </div>
-        <div className="rounded-xl overflow-hidden border-2 border-gray-200" style={{ height: '70vh' }}>
-          <GoogleMap mapContainerStyle={containerStyle} defaultCenter={DEFAULT_CENTER} defaultZoom={12} onLoad={onMapLoad} />
-        </div>
+        {mapEl}
       </div>
     </main>
   )
