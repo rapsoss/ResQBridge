@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { GoogleMap, useLoadScript } from '@react-google-maps/api'
 import { useAuth } from '../../context/AuthContext'
-import { useLocationContext } from '../../context/LocationContext'
 import { rescuer as rescuerApi } from '../../services/api'
 
 const containerStyle = { width: '100%', height: '100%', borderRadius: '0.75rem' }
@@ -22,17 +21,14 @@ function icon(g, scale, fillColor) {
 export default function TeamMap() {
   const { isLoaded } = useLoadScript({ googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY })
   const { user } = useAuth()
-  const { userPos } = useLocationContext()
   const [rescuers, setRescuers] = useState([])
   const [mapReady, setMapReady] = useState(false)
   const mapRef = useRef(null)
-  const userMarkerRef = useRef(null)
-  const rescuerMarkersRef = useRef({})
-  const infoWindowRef = useRef(null)
 
   const onMapLoad = useCallback((map) => {
     mapRef.current = map
     setMapReady(true)
+    fetchUserMarker(map)
   }, [])
 
   const mapEl = useMemo(() => (
@@ -41,16 +37,23 @@ export default function TeamMap() {
     </div>
   ), [])
 
-  useEffect(() => {
-    const g = window.google
-    if (!mapReady || !userPos || !g || userMarkerRef.current) return
-    userMarkerRef.current = new g.maps.Marker({
-      position: userPos,
-      map: mapRef.current,
-      icon: icon(g, 10, '#2563eb'),
-      title: 'Your Location',
-    })
-  }, [mapReady, userPos])
+  function fetchUserMarker(map) {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const g = window.google
+        if (!g) return
+        new g.maps.Marker({
+          position: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          map,
+          icon: icon(g, 10, '#2563eb'),
+          title: 'Your Location',
+        })
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
+  }
 
   useEffect(() => {
     const g = window.google
