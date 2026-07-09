@@ -95,9 +95,19 @@ export default function RescuerProfile() {
                   }}
                   onChange={(e) => setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="9XX XXX XXXX"
-                  className="block w-full rounded-r-xl border-2 border-gray-200 bg-gray-50 px-4 py-3.5 text-base font-semibold text-gray-900 outline-none transition-all focus:border-amber-600 focus:bg-white focus:ring-4 focus:ring-amber-100"
+                  className={`block w-full rounded-r-xl border-2 px-4 py-3.5 text-base font-semibold text-gray-900 outline-none transition-all focus:bg-white focus:ring-4 ${
+                    phoneDigits && (phoneDigits[0] !== '9' || phoneDigits.length < 10)
+                      ? 'border-amber-400 focus:border-amber-600 focus:ring-amber-100'
+                      : 'border-gray-200 focus:border-amber-600 focus:ring-amber-100'
+                  }`}
                 />
               </div>
+              {phoneDigits && phoneDigits[0] !== '9' && (
+                <p className="mt-1 text-xs text-amber-600">Must start with 9</p>
+              )}
+              {phoneDigits && phoneDigits[0] === '9' && phoneDigits.length < 10 && (
+                <p className="mt-1 text-xs text-amber-600">Enter complete 10-digit number</p>
+              )}
             </div>
 
             <div>

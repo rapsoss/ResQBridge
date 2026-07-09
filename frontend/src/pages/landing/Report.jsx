@@ -241,11 +241,21 @@ export default function Report() {
                     if (text && /\D/.test(text)) e.preventDefault()
                   }}
                   onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
-                  className="block w-full rounded-r-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                  className={`block w-full rounded-r-lg border px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-1 ${
+                    form.phone && (form.phone[0] !== '9' || form.phone.length < 10)
+                      ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-500'
+                      : 'border-gray-300 focus:border-green-500 focus:ring-green-500'
+                  }`}
                   placeholder="9XX XXX XXXX"
                   required
                 />
               </div>
+              {form.phone && form.phone[0] !== '9' && (
+                <p className="mt-1 text-xs text-amber-600">Must start with 9</p>
+              )}
+              {form.phone && form.phone[0] === '9' && form.phone.length < 10 && (
+                <p className="mt-1 text-xs text-amber-600">Enter complete 10-digit number</p>
+              )}
             </div>
           </div>
 
