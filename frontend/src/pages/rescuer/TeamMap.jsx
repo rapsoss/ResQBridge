@@ -24,6 +24,7 @@ export default function TeamMap() {
   const { user } = useAuth()
   const { userPos } = useLocationContext()
   const [rescuers, setRescuers] = useState([])
+  const [mapReady, setMapReady] = useState(false)
   const mapRef = useRef(null)
   const userMarkerRef = useRef(null)
   const rescuerMarkersRef = useRef({})
@@ -31,22 +32,19 @@ export default function TeamMap() {
 
   const onMapLoad = useCallback((map) => {
     mapRef.current = map
+    setMapReady(true)
   }, [])
 
   useEffect(() => {
     const g = window.google
-    if (!mapRef.current || !userPos || !g) return
-    if (userMarkerRef.current) {
-      userMarkerRef.current.setPosition(userPos)
-    } else {
-      userMarkerRef.current = new g.maps.Marker({
-        position: userPos,
-        map: mapRef.current,
-        icon: icon(g, 10, '#2563eb'),
-        title: 'Your Location',
-      })
-    }
-  }, [userPos])
+    if (!mapReady || !userPos || !g || userMarkerRef.current) return
+    userMarkerRef.current = new g.maps.Marker({
+      position: userPos,
+      map: mapRef.current,
+      icon: icon(g, 10, '#2563eb'),
+      title: 'Your Location',
+    })
+  }, [mapReady, userPos])
 
   useEffect(() => {
     const g = window.google
