@@ -87,6 +87,7 @@ const getAdminReports = async (req, res) => {
     phone: r.phone || "",
     category: r.category || "other",
     animalType: r.animalType,
+    wildlifeCondition: r.wildlifeCondition || null,
     urgency: r.urgency,
     location: r.location,
     description: r.description,
