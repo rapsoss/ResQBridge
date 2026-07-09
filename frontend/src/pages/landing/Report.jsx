@@ -220,7 +220,7 @@ export default function Report() {
               <input
                 type="text"
                 value={form.name}
-                maxLength={25}
+                maxLength={30}
                 onChange={update('name')}
                 className="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
                 placeholder="Juan Dela Cruz"
