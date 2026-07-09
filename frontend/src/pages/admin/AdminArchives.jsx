@@ -144,6 +144,7 @@ export default function AdminArchives() {
                     <span><strong>Location:</strong> {r.location}</span>
                     <span><strong>Name:</strong> {r.name}</span>
                     <span><strong>Phone:</strong> {r.phone}</span>
+                    <span><strong>Condition:</strong> {r.wildlifeCondition || '—'}</span>
                     {r.assignedUser && (
                       <span><strong>Assigned to:</strong> {r.assignedUser.firstName} {r.assignedUser.lastName}</span>
                     )}

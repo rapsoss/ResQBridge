@@ -69,6 +69,7 @@ const submitReport = async (req, res) => {
     phone,
     category: category || "other",
     animalType,
+    wildlifeCondition: wildlifeCondition || undefined,
     urgency,
     location,
     description,

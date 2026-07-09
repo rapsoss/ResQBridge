@@ -52,6 +52,7 @@ export default defineSchema({
     phone: v.string(),
     category: v.string(),
     animalType: v.string(),
+    wildlifeCondition: v.optional(v.string()),
     urgency: v.string(),
     location: v.string(),
     description: v.optional(v.string()),

@@ -331,6 +331,10 @@ export default function AdminReports({ adminPermissions }) {
                         <p className="text-sm text-gray-900 mt-0.5">{r.animalType}</p>
                       </div>
                       <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Condition</p>
+                        <p className="text-sm text-gray-900 mt-0.5">{r.wildlifeCondition || '—'}</p>
+                      </div>
+                      <div>
                         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Location</p>
                         <p className="text-sm text-gray-900 mt-0.5">{r.location}</p>
                       </div>
