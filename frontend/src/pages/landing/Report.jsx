@@ -369,11 +369,12 @@ export default function Report() {
                 <p className="mt-1 text-gray-300">Providing a nearby landmark helps responders locate the reported wildlife more quickly and accurately, especially if GPS accuracy is limited.</p>
               </InfoPopover>
             </label>
-            <input
-              type="text"
+            <textarea
+              rows={2}
               value={form.location}
+              maxLength={200}
               onChange={update('location')}
-              className="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+              className="mt-1.5 w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
               placeholder="Near Barangay Hall, beside the elementary school."
             />
           </div>
