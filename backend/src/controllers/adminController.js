@@ -118,8 +118,19 @@ const assignReport = async (req, res) => {
 };
 
 const getRescuerLocations = async (_req, res) => {
-  const locations = await convexClient.query(anyApi.locations.getRescuerLocations);
-  res.json({ locations });
+  const [locations, users] = await Promise.all([
+    convexClient.query(anyApi.locations.getRescuerLocations),
+    convexClient.query(anyApi.users.getAllUsers),
+  ]);
+  const nameMap = {};
+  for (const u of users) {
+    nameMap[u.uuid] = `${u.firstName} ${u.lastName}`.trim();
+  }
+  const enriched = locations.map((l) => ({
+    ...l,
+    userName: nameMap[l.userId] || l.userName,
+  }));
+  res.json({ locations: enriched });
 };
 
 const getRescuerReports = async (req, res) => {

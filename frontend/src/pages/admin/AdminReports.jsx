@@ -22,7 +22,7 @@ const STATUS_BADGE = {
 const STATUS_LABELS = {
   pending: 'Pending', assigned: 'Assigned', en_route: 'En Route',
   in_progress: 'Working', transport_to_pwrccc: 'Transport to PWRCCC',
-  resolved: 'Done', failed: 'Failed',
+  resolved: 'Successful', failed: 'Failed',
 }
 
 const CATEGORY_ICONS = {
@@ -133,7 +133,7 @@ export default function AdminReports({ adminPermissions }) {
             { key: 'assigned', label: 'Assigned' },
             { key: 'en_route', label: 'En Route' },
             { key: 'in_progress', label: 'Working' },
-            { key: 'resolved', label: 'Done' },
+            { key: 'resolved', label: 'Successful' },
             { key: 'failed', label: 'Failed' },
           ].map((s) => (
             <button

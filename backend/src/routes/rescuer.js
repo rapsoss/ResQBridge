@@ -53,8 +53,19 @@ router.post("/voice-notes", asyncHandler(addVoiceNote));
 router.get("/locations", asyncHandler(async (_req, res) => {
   const convexClient = require("../config/convex");
   const { anyApi } = require("convex/server");
-  const locations = await convexClient.query(anyApi.locations.getRescuerLocations);
-  res.json({ locations });
+  const [locations, users] = await Promise.all([
+    convexClient.query(anyApi.locations.getRescuerLocations),
+    convexClient.query(anyApi.users.getAllUsers),
+  ]);
+  const nameMap = {};
+  for (const u of users) {
+    nameMap[u.uuid] = `${u.firstName} ${u.lastName}`.trim();
+  }
+  const enriched = locations.map((l) => ({
+    ...l,
+    userName: nameMap[l.userId] || l.userName,
+  }));
+  res.json({ locations: enriched });
 }));
 
 module.exports = router;
