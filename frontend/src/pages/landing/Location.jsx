@@ -1,43 +1,29 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { GoogleMap, Marker, Polyline, Circle, useLoadScript } from '@react-google-maps/api'
+import { useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Polyline, Circle } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { useLocationContext } from '../../context/LocationContext'
 import AnimateIn from '../../components/ui/AnimateIn'
 
-const containerStyle = { width: '100%', height: '420px', borderRadius: '0.75rem' }
+import iconUrl from 'leaflet/dist/images/marker-icon.png'
+import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
+import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 
-const PWRCCC_POSITION = { lat: 9.799447, lng: 118.693766 }
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl })
 
 export default function Location({ title, subtitle, center }) {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-  const { isLoaded, loadError } = useLoadScript({ googleMapsApiKey: apiKey })
-  const mapsFailed = loadError || (isLoaded && !window.google?.maps?.version)
   const { userPos, locError, distance, routePath, routeInfo, routeLoading, requestLocation } = useLocationContext()
-  const [mapReady, setMapReady] = useState(false)
-  const [mapTimedOut, setMapTimedOut] = useState(false)
-  const readyRef = useRef(false)
 
-  useEffect(() => {
-    if (mapsFailed) return
-    const timer = setTimeout(() => {
-      if (!readyRef.current) setMapTimedOut(true)
-    }, 8000)
-    return () => clearTimeout(timer)
-  }, [mapsFailed])
+  useEffect(() => { requestLocation() }, [requestLocation])
 
-  const onMapLoad = useCallback(() => {
-    readyRef.current = true
-    setMapReady(true)
-  }, [])
+  const leafletRoutePath = routePath?.map(p => [p.lat, p.lng])
 
   function isOpen() {
     const now = new Date()
     const totalMins = now.getHours() * 60 + now.getMinutes()
     return totalMins >= 480 && totalMins < 1020
   }
-
-  const mapCenter = userPos || center || PWRCCC_POSITION
-
-  const googleRoutePath = routePath?.map(p => ({ lat: p.lat, lng: p.lng }))
 
   return (
     <section className="border-t border-gray-100 px-6 py-20 sm:px-8 lg:px-8">
@@ -160,64 +146,41 @@ export default function Location({ title, subtitle, center }) {
                 </span>
               </div>
             )}
-            {mapsFailed || mapTimedOut ? (
-              <div className="flex items-center justify-center bg-red-50" style={{ height: '420px' }}>
-                <div className="text-center">
-                  <p className="text-lg font-semibold text-red-700">Map service unavailable</p>
-                  <p className="mt-1 text-sm text-red-500">The Google Maps API key is invalid or has exceeded its quota.</p>
-                </div>
-              </div>
-            ) : !isLoaded ? (
-              <div className="flex items-center justify-center bg-gray-100" style={{ height: '420px' }}>
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-600 border-t-transparent" />
-              </div>
-            ) : (
-              <GoogleMap mapContainerStyle={containerStyle} center={mapCenter} zoom={userPos ? 13 : 11} onLoad={onMapLoad}>
-                <Marker
-                  position={PWRCCC_POSITION}
-                  title="Palawan Wildlife Rescue & Conservation Center"
+            <MapContainer
+              center={[center.lat, center.lng]}
+              zoom={16}
+              className="z-0 h-[420px] w-full min-h-[300px]"
+              scrollWheelZoom={true}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+
+              <Marker position={[center.lat, center.lng]} />
+
+              {leafletRoutePath && (
+                <Polyline
+                  positions={leafletRoutePath}
+                  pathOptions={{ color: '#16a34a', weight: 4, opacity: 0.85 }}
                 />
+              )}
 
-                {googleRoutePath && (
-                  <Polyline
-                    path={googleRoutePath}
-                    options={{
-                      strokeColor: '#16a34a',
-                      strokeWeight: 4,
-                      strokeOpacity: 0.85,
-                    }}
+              {userPos && (
+                <>
+                  <Circle
+                    center={[userPos.lat, userPos.lng]}
+                    radius={30}
+                    pathOptions={{ fillColor: '#3b82f6', fillOpacity: 0.1, color: '#3b82f6', opacity: 0.3, weight: 1 }}
                   />
-                )}
-
-                {userPos && (
-                  <>
-                    <Circle
-                      center={userPos}
-                      radius={30}
-                      options={{
-                        fillColor: '#3b82f6',
-                        fillOpacity: 0.1,
-                        strokeColor: '#3b82f6',
-                        strokeOpacity: 0.3,
-                        strokeWeight: 1,
-                      }}
-                    />
-                    <Marker
-                      position={userPos}
-                      icon={{
-                        path: window.google.maps.SymbolPath.CIRCLE,
-                        scale: 8,
-                        fillColor: '#3b82f6',
-                        fillOpacity: 1,
-                        strokeColor: '#fff',
-                        strokeWeight: 3,
-                      }}
-                      title="Your Location"
-                    />
-                  </>
-                )}
-              </GoogleMap>
-            )}
+                  <Circle
+                    center={[userPos.lat, userPos.lng]}
+                    radius={4}
+                    pathOptions={{ fillColor: '#3b82f6', fillOpacity: 1, color: '#fff', weight: 3 }}
+                  />
+                </>
+              )}
+            </MapContainer>
           </div>
         </div>
       </div>
