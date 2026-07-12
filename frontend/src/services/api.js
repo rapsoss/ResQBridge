@@ -15,10 +15,31 @@ async function request(endpoint, options = {}) {
   }
 
   const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers, credentials: 'include' })
-  const data = await res.json()
+
+  const contentType = res.headers.get('content-type')
+  let data
+
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await res.json()
+    } catch {
+      data = null
+    }
+  } else {
+    const text = await res.text()
+    if (!res.ok) {
+      throw new ApiError(
+        res.status === 429
+          ? 'Too many attempts. Please try again later.'
+          : `Server error (${res.status})`,
+        res.status
+      )
+    }
+    throw new ApiError(text || 'Empty response from server', res.status)
+  }
 
   if (!res.ok) {
-    throw new ApiError(data.message || 'Something went wrong', res.status, data.errors)
+    throw new ApiError(data?.message || 'Something went wrong', res.status, data?.errors)
   }
 
   return data

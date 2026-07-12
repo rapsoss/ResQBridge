@@ -1,8 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api'
 import { useAuth } from '../../context/AuthContext'
 import { rescuer as rescuerApi } from '../../services/api'
 import { MedicalIcon, StrandedIcon, SearchIcon, PawIcon, HouseIcon, ClipboardIcon } from '../../components/SvgIcons'
+
+const origObserve = IntersectionObserver.prototype.observe
+IntersectionObserver.prototype.observe = function (el) {
+  if (!el) return
+  return origObserve.call(this, el)
+}
+
+const PWRCCC_CENTER = { lat: 9.799447, lng: 118.693766 }
+const mapContainerStyle = { width: '100%', height: '100%' }
 
 const URGENCY_LABEL = {
   low: { label: 'Low', class: 'bg-gray-100 text-gray-700' },
@@ -29,6 +39,9 @@ export default function RescuerDashboard() {
   const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  const { isLoaded, loadError } = useLoadScript({ googleMapsApiKey: apiKey })
+  const mapsFailed = loadError || (isLoaded && !window.google?.maps?.version)
 
   useEffect(() => {
     if (!user) return
@@ -130,6 +143,41 @@ export default function RescuerDashboard() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="mt-8 rounded-2xl border-2 border-gray-200 bg-white p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Palawan Wildlife Rescue & Conservation Center</h2>
+          <div className={`rounded-xl overflow-hidden border ${loadError || mapsFailed ? 'bg-red-50 border-red-200' : 'border-gray-100'}`} style={{ height: '400px' }}>
+            {loadError || mapsFailed ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-red-700">Map service unavailable</p>
+                  <p className="mt-1 text-sm text-red-500">The Google Maps API key is invalid or has exceeded its quota.</p>
+                </div>
+              </div>
+            ) : !isLoaded ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-600 border-t-transparent" />
+              </div>
+            ) : (
+              <GoogleMap mapContainerStyle={mapContainerStyle} center={PWRCCC_CENTER} zoom={16}>
+                {window.google?.maps?.version && (
+                  <Marker
+                    position={PWRCCC_CENTER}
+                    icon={{
+                      path: window.google.maps.SymbolPath.CIRCLE,
+                      scale: 12,
+                      fillColor: '#dc2626',
+                      fillOpacity: 1,
+                      strokeColor: '#fff',
+                      strokeWeight: 4,
+                    }}
+                    title="PWRCCC - Palawan Wildlife Rescue & Conservation Center"
+                  />
+                )}
+              </GoogleMap>
+            )}
+          </div>
         </div>
 
         {!loading && stats?.monthlyTrends?.length > 0 && (
