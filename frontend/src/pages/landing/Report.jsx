@@ -86,6 +86,7 @@ export default function Report() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [phoneError, setPhoneError] = useState('')
   const [gettingLocation, setGettingLocation] = useState(false)
   const [locateTrigger, setLocateTrigger] = useState(0)
   const [speciesOpen, setSpeciesOpen] = useState(false)
@@ -161,6 +162,16 @@ export default function Report() {
   async function handleSubmit(e) {
     if (e) e.preventDefault()
     setError('')
+    setPhoneError('')
+    const phone = form.phone
+    if (!phone || phone.length !== 10) {
+      setError('Contact phone must be exactly 10 digits.')
+      return
+    }
+    if (phone[0] !== '9') {
+      setError('Contact phone must start with 9.')
+      return
+    }
     if (imageFiles.length === 0) {
       setError('Please upload at least one supporting photo.')
       return
@@ -262,12 +273,23 @@ export default function Report() {
                     const text = (e.clipboardData || window.clipboardData).getData('text')
                     if (text && /\D/.test(text)) e.preventDefault()
                   }}
-                  onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                    setForm((prev) => ({ ...prev, phone: val }))
+                    if (val.length > 0 && val[0] !== '9') {
+                      setPhoneError('Number must start with 9')
+                    } else if (val.length > 0 && val.length < 10) {
+                      setPhoneError('Number must be exactly 10 digits')
+                    } else {
+                      setPhoneError('')
+                    }
+                  }}
                   className="block w-full rounded-r-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
                   placeholder="9XX XXX XXXX"
                   required
                 />
               </div>
+              {phoneError && <p className="mt-1 text-xs text-red-500">{phoneError}</p>}
             </div>
           </div>
 
@@ -353,13 +375,13 @@ export default function Report() {
 
           {selectedSpecies && (
             <div>
-              <p className="mb-1.5 text-xs text-gray-400">Click the animal to confirm if that is the animal you are reporting.</p>
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+              <p className="mb-1.5 text-xs text-gray-400">Click the card to confirm if that is the animal you are reporting.</p>
+              <button type="button" onClick={() => selectedSpecies.images?.[0] ? setPreviewUrl(selectedSpecies.images[0]) : null} className="w-full rounded-xl border border-green-200 bg-green-50 p-4 text-left transition-colors hover:bg-green-100">
               <div className="flex gap-4">
                 {selectedSpecies.images?.[0] ? (
-                  <button type="button" onClick={() => setPreviewUrl(selectedSpecies.images[0])} className="h-20 w-20 shrink-0 overflow-hidden rounded-lg">
-                    <img src={selectedSpecies.images[0]} alt={selectedSpecies.name} className="h-full w-full cursor-pointer object-cover transition-opacity hover:opacity-80" />
-                  </button>
+                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg">
+                    <img src={selectedSpecies.images[0]} alt={selectedSpecies.name} className="h-full w-full object-cover" />
+                  </div>
                 ) : (
                   <div className="h-20 w-20 shrink-0 rounded-lg bg-gradient-to-br from-green-100 to-emerald-50" />
                 )}
@@ -383,7 +405,7 @@ export default function Report() {
               {selectedSpecies.note && (
                 <p className="mt-2 text-xs leading-relaxed text-gray-500">{selectedSpecies.note}</p>
               )}
-            </div>
+            </button>
             </div>
           )}
 
@@ -422,6 +444,7 @@ export default function Report() {
               onChange={update('location')}
               className="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
               placeholder="Near Barangay Hall, beside the elementary school."
+              required
             />
           </div>
 

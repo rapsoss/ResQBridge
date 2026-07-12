@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { DoubleConfirmation, SkeletonCard } from '../../components/ui'
+import { DoubleConfirmation, Modal, SkeletonCard } from '../../components/ui'
 import { admin as adminApi } from '../../services/api'
 import { MedicalIcon, StrandedIcon, SearchIcon, PawIcon, HouseIcon, ClipboardIcon } from '../../components/SvgIcons'
 import ReportMap from '../rescuer/ReportMap'
@@ -385,7 +385,12 @@ export default function AdminReports({ adminPermissions }) {
                           <select
                             disabled={assigningId === r._id}
                             value={r.assignedTo || ""}
-                            onChange={(e) => handleAssign(r._id, e.target.value)}
+                            onChange={(e) => {
+                              const userId = e.target.value
+                              if (!userId) return
+                              const rescuer = users.find((u) => u.uuid === userId)
+                              setAssignTarget({ reportId: r._id, userId, rescuerName: rescuer ? `${rescuer.firstName} ${rescuer.lastName}` : 'this rescuer', animalType: r.animalType })
+                            }}
                             className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 focus:border-green-600 focus:outline-none disabled:opacity-50"
                           >
                             <option value="">{r.assignedTo ? 'Change rescuer...' : 'Assign rescuer...'}</option>
@@ -464,6 +469,38 @@ export default function AdminReports({ adminPermissions }) {
           </button>
         </div>
       )}
+
+      <Modal
+        isOpen={!!assignTarget.reportId}
+        onClose={() => setAssignTarget({})}
+        title="Assign Rescuer"
+        size="sm"
+        footer={
+          <>
+            <button
+              onClick={() => setAssignTarget({})}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                await handleAssign(assignTarget.reportId, assignTarget.userId)
+                setAssignTarget({})
+              }}
+              disabled={assigningId === assignTarget.reportId}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {assigningId === assignTarget.reportId ? 'Assigning...' : 'Confirm'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-gray-600">
+          Assign <span className="font-semibold text-gray-900">{assignTarget.rescuerName}</span> to the{' '}
+          <span className="font-semibold text-gray-900">{assignTarget.animalType || 'report'}</span> report?
+        </p>
+      </Modal>
     </div>
   )
 }

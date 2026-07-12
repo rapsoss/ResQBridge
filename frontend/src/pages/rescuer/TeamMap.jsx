@@ -14,17 +14,6 @@ const containerStyle = { width: '100%', height: '100%' }
 
 const DEFAULT_CENTER = { lat: 9.799447, lng: 118.693766 }
 
-function icon(g, scale, fillColor) {
-  return {
-    path: g.maps.SymbolPath.CIRCLE,
-    scale,
-    fillColor,
-    fillOpacity: 1,
-    strokeColor: '#fff',
-    strokeWeight: 4,
-  }
-}
-
 export default function TeamMap() {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   const { user } = useAuth()
@@ -32,7 +21,11 @@ export default function TeamMap() {
   const [rescuers, setRescuers] = useState([])
   const [selected, setSelected] = useState(null)
   const [mapLoaded, setMapLoaded] = useState(false)
-  const center = userPos || { lat: 9.799447, lng: 118.693766 }
+  const mapRef = useRef(null)
+  const centerRef = useRef(userPos || DEFAULT_CENTER)
+  if (userPos && !mapRef.current) {
+    centerRef.current = userPos
+  }
 
   const { isLoaded, loadError } = useLoadScript({ googleMapsApiKey: apiKey })
   const mapsFailed = loadError || (isLoaded && !window.google?.maps?.version)
@@ -85,7 +78,7 @@ export default function TeamMap() {
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-600 border-t-transparent" />
             </div>
           ) : (
-            <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={12} onLoad={onMapLoad}>
+            <GoogleMap mapContainerStyle={containerStyle} center={centerRef.current} zoom={12} onLoad={(map) => { mapRef.current = map; onMapLoad() }}>
               {mapLoaded && (
                 <>
                   {userPos && (
