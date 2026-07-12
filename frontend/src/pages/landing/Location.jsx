@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { GoogleMap, Marker, Polyline, Circle, useLoadScript } from '@react-google-maps/api'
 import { useLocationContext } from '../../context/LocationContext'
 import AnimateIn from '../../components/ui/AnimateIn'
@@ -12,8 +12,22 @@ export default function Location({ title, subtitle, center }) {
   const { isLoaded, loadError } = useLoadScript({ googleMapsApiKey: apiKey })
   const mapsFailed = loadError || (isLoaded && !window.google?.maps?.version)
   const { userPos, locError, distance, routePath, routeInfo, routeLoading, requestLocation } = useLocationContext()
+  const [mapReady, setMapReady] = useState(false)
+  const [mapTimedOut, setMapTimedOut] = useState(false)
+  const readyRef = useRef(false)
 
-  const onMapLoad = useCallback(() => {}, [])
+  useEffect(() => {
+    if (mapsFailed) return
+    const timer = setTimeout(() => {
+      if (!readyRef.current) setMapTimedOut(true)
+    }, 8000)
+    return () => clearTimeout(timer)
+  }, [mapsFailed])
+
+  const onMapLoad = useCallback(() => {
+    readyRef.current = true
+    setMapReady(true)
+  }, [])
 
   function isOpen() {
     const now = new Date()
@@ -146,7 +160,7 @@ export default function Location({ title, subtitle, center }) {
                 </span>
               </div>
             )}
-            {mapsFailed ? (
+            {mapsFailed || mapTimedOut ? (
               <div className="flex items-center justify-center bg-red-50" style={{ height: '420px' }}>
                 <div className="text-center">
                   <p className="text-lg font-semibold text-red-700">Map service unavailable</p>
