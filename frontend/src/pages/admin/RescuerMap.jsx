@@ -40,7 +40,8 @@ export default function RescuerMap() {
   const [assignLoading, setAssignLoading] = useState(false)
   const [search, setSearch] = useState('')
 
-  const { isLoaded } = useLoadScript({ googleMapsApiKey: apiKey })
+  const { isLoaded, loadError } = useLoadScript({ googleMapsApiKey: apiKey })
+  const mapsFailed = loadError || (isLoaded && !window.google?.maps?.version)
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -96,6 +97,17 @@ export default function RescuerMap() {
     : locations.length > 0
       ? { lat: locations[0].latitude, lng: locations[0].longitude }
       : { lat: 14.5, lng: 121 }
+
+  if (mapsFailed) {
+    return (
+      <div className="flex items-center justify-center rounded-xl bg-red-50 border-2 border-red-200" style={{ height: '600px' }}>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-red-700">Map service unavailable</p>
+          <p className="mt-1 text-sm text-red-500">The Google Maps API key is invalid or has exceeded its quota.</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!isLoaded) {
     return (

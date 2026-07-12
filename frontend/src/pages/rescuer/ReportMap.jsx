@@ -26,7 +26,8 @@ export default function ReportMap({ latitude, longitude, label, userPos, autoRou
   const polyRef1 = useRef(null)
   const polyRef2 = useRef(null)
 
-  const { isLoaded } = useLoadScript({ googleMapsApiKey: apiKey })
+  const { isLoaded, loadError } = useLoadScript({ googleMapsApiKey: apiKey })
+  const mapsFailed = loadError || (isLoaded && !window.google?.maps?.version)
 
   const onLoad = useCallback((m) => {
     setMap(m)
@@ -178,6 +179,14 @@ export default function ReportMap({ latitude, longitude, label, userPos, autoRou
     setRoutePath(null)
     setRouteInfo(null)
     setRouteError(null)
+  }
+
+  if (mapsFailed) {
+    return (
+      <div className="flex items-center justify-center rounded-xl bg-red-50 border-2 border-red-200" style={{ height: '320px' }}>
+        <p className="text-sm font-semibold text-red-700">Map service unavailable</p>
+      </div>
+    )
   }
 
   if (!isLoaded) {
