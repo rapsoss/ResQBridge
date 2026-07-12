@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { GoogleMap, Marker, InfoWindow, useLoadScript } from '@react-google-maps/api'
 import { useAuth } from '../../context/AuthContext'
 import { useLocationContext } from '../../context/LocationContext'
@@ -36,8 +36,19 @@ export default function TeamMap() {
 
   const { isLoaded, loadError } = useLoadScript({ googleMapsApiKey: apiKey })
   const mapsFailed = loadError || (isLoaded && !window.google?.maps?.version)
+  const [mapTimedOut, setMapTimedOut] = useState(false)
+  const readyRef = useRef(false)
+
+  useEffect(() => {
+    if (mapsFailed) return
+    const timer = setTimeout(() => {
+      if (!readyRef.current) setMapTimedOut(true)
+    }, 8000)
+    return () => clearTimeout(timer)
+  }, [mapsFailed])
 
   const onMapLoad = useCallback(() => {
+    readyRef.current = true
     if (window.google?.maps?.version) setMapLoaded(true)
   }, [])
 
@@ -58,11 +69,11 @@ export default function TeamMap() {
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Team Map</h1>
           <p className="mt-1 text-lg text-gray-500">
-            {loadError || mapsFailed ? 'Google Maps is unavailable' : `See other rescuers in your area (${online} online)`}
+            {loadError || mapsFailed || mapTimedOut ? 'Google Maps is unavailable' : `See other rescuers in your area (${online} online)`}
           </p>
         </div>
-        <div className={`rounded-xl overflow-hidden border-2 ${loadError || mapsFailed ? 'bg-red-50 border-red-200' : 'border-gray-200'}`} style={{ height: '70vh' }}>
-          {loadError || mapsFailed ? (
+        <div className={`rounded-xl overflow-hidden border-2 ${loadError || mapsFailed || mapTimedOut ? 'bg-red-50 border-red-200' : 'border-gray-200'}`} style={{ height: '70vh' }}>
+          {loadError || mapsFailed || mapTimedOut ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <p className="text-lg font-semibold text-red-700">Map service unavailable</p>
