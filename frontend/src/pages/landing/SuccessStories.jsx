@@ -2,15 +2,9 @@ import { useState } from 'react'
 import { Modal } from '../../components/ui'
 import AnimateIn from '../../components/ui/AnimateIn'
 
-const STORY_COLORS = [
-  { from: 'from-emerald-500', to: 'to-green-700' },
-  { from: 'from-blue-500', to: 'to-indigo-700' },
-  { from: 'from-amber-400', to: 'to-orange-600' },
-  { from: 'from-teal-500', to: 'to-cyan-700' },
-]
-
 export default function SuccessStories({ title, subtitle, stories }) {
   const [selected, setSelected] = useState(null)
+  const [lightbox, setLightbox] = useState(null)
 
   if (!stories.length) return null
 
@@ -31,12 +25,12 @@ export default function SuccessStories({ title, subtitle, stories }) {
                 onClick={() => setSelected(s)}
                 className="group relative flex flex-col overflow-hidden rounded-2xl text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
               >
-                <div className={`aspect-[4/3] bg-gradient-to-br ${STORY_COLORS[i % STORY_COLORS.length].from} ${STORY_COLORS[i % STORY_COLORS.length].to} flex items-end p-5 transition-transform duration-300 group-hover:scale-105`}>
-                  <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
-                    {s.species}
-                  </span>
-                </div>
-                <div className="flex flex-1 flex-col justify-between border border-t-0 border-gray-200 bg-white p-5">
+                {s.image ? (
+                  <div className="aspect-[4/3] overflow-hidden">
+                    <img src={s.image} alt={s.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  </div>
+                ) : null}
+                <div className={`flex flex-1 flex-col justify-between border border-gray-200 bg-white p-5 ${s.image ? 'border-t-0' : ''}`}>
                   <div>
                     <p className="text-sm font-semibold leading-relaxed text-gray-900">
                       &ldquo;{s.quote}&rdquo;
@@ -59,14 +53,15 @@ export default function SuccessStories({ title, subtitle, stories }) {
         </div>
       </div>
 
-      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title="Success Story" size="3xl">
+      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title="Success Story" size="lg">
         {selected && (
           <div className="space-y-5">
-            <div className={`aspect-[2/1] rounded-xl bg-gradient-to-br ${STORY_COLORS[0].from} ${STORY_COLORS[0].to} flex items-end p-6`}>
-              <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
-                {selected.species}
-              </span>
-            </div>
+            {selected.image && (
+              <div className="relative">
+                <img src={selected.image} alt={selected.name} onClick={() => setLightbox(selected.image)} className="w-full rounded-xl border border-gray-200 object-cover max-h-64 cursor-pointer" />
+                <span className="absolute bottom-2 right-2 rounded bg-black/50 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">Click to expand</span>
+              </div>
+            )}
             <p className="text-lg font-semibold leading-relaxed text-gray-900">&ldquo;{selected.quote}&rdquo;</p>
             <p className="text-sm leading-relaxed text-gray-500">{selected.result}</p>
             <p className="text-sm leading-relaxed text-gray-500">{selected.fullStory}</p>
@@ -82,6 +77,23 @@ export default function SuccessStories({ title, subtitle, stories }) {
           </div>
         )}
       </Modal>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 cursor-pointer"
+          onClick={() => setLightbox(null)}
+        >
+          <img src={lightbox} alt="" className="max-h-full max-w-full rounded-xl object-contain" onClick={(e) => e.stopPropagation()} />
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 transition-colors"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </section>
   )
 }

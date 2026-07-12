@@ -143,7 +143,6 @@ export default function ContactSection({ contact }) {
                   className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition-all duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 >
                   <option>Report an Animal</option>
-                  <option>Volunteer</option>
                   <option>Donation</option>
                   <option>General Inquiry</option>
                 </select>

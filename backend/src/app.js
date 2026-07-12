@@ -101,15 +101,6 @@ app.post("/api/v1/contact", honeypot(), asyncHandler(async (req, res) => {
   res.json({ message: "Message sent successfully." });
 }));
 
-app.post("/api/v1/volunteer", honeypot(), asyncHandler(async (req, res) => {
-  const { name, email, phone, interest, message } = req.body;
-  if (!name || !email) {
-    return res.status(400).json({ message: "Name and email are required." });
-  }
-  await logEvent({ req, eventType: "volunteer", section: "volunteer", metadata: { name, email, phone, interest } });
-  res.json({ message: "Application submitted successfully." });
-}));
-
 app.post("/api/v1/newsletter", honeypot(), asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {

@@ -275,7 +275,6 @@ const configSubLinks = [
   { key: 'howItWorks', label: 'How It Works' },
   { key: 'successStories', label: 'Success Stories' },
   { key: 'gallery', label: 'Gallery' },
-  { key: 'volunteer', label: 'Volunteer' },
   { key: 'partners', label: 'Partners' },
   { key: 'location', label: 'Location' },
   { key: 'newsEvents', label: 'News & Events' },
