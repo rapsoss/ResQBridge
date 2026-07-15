@@ -17,7 +17,7 @@ const URGENCY_MAP = {
 };
 
 const submitReport = async (req, res) => {
-  const { name, phone, category, animalType, wildlifeCondition, location, description, latitude, longitude } = req.body;
+  const { name, phone, category, animalType, wildlifeCondition, location, description, latitude, longitude, quantity } = req.body;
 
   if (name && name.length > 100) {
     return res.status(400).json({ message: "Name must be at most 100 characters." });
@@ -36,6 +36,11 @@ const submitReport = async (req, res) => {
   }
 
   const urgency = URGENCY_MAP[wildlifeCondition] || "medium";
+
+  const qty = quantity ? parseInt(quantity, 10) : undefined;
+  if (qty !== undefined && (isNaN(qty) || qty < 1)) {
+    return res.status(400).json({ message: "Quantity must be a positive number." });
+  }
 
   const lat = latitude ? parseFloat(latitude) : undefined;
   const lng = longitude ? parseFloat(longitude) : undefined;
@@ -76,6 +81,7 @@ const submitReport = async (req, res) => {
     category: category || "other",
     animalType,
     urgency,
+    quantity: qty,
     location,
     description,
     images: images.length > 0 ? images.join(",") : undefined,

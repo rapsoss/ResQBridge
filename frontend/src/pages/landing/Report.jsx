@@ -71,6 +71,7 @@ export default function Report() {
     category: '',
     animalType: '',
     wildlifeCondition: '',
+    quantity: '1',
     location: '',
     description: '',
     latitude: '',
@@ -184,6 +185,7 @@ export default function Report() {
       fd.append('category', form.category)
       fd.append('animalType', form.animalType)
       fd.append('wildlifeCondition', form.wildlifeCondition)
+      fd.append('quantity', form.quantity)
       fd.append('location', form.location)
       fd.append('description', form.description)
       fd.append('latitude', form.latitude)
@@ -221,7 +223,7 @@ export default function Report() {
           </p>
           <div className="mt-8 flex justify-center gap-3">
             <Button onClick={() => navigate('/')}>Back to Home</Button>
-            <Button variant="outline" onClick={() => { setSubmitted(false); setForm({ name: '', phone: '', category: '', animalType: '', wildlifeCondition: '', location: '', description: '', latitude: '', longitude: '' }); setSelectedSpecies(null); setImageFiles([]); setImagePreviews([]); if (fileRef.current) fileRef.current.value = '' }}>
+            <Button variant="outline" onClick={() => { setSubmitted(false); setForm({ name: '', phone: '', category: '', animalType: '', wildlifeCondition: '', quantity: '1', location: '', description: '', latitude: '', longitude: '' }); setSelectedSpecies(null); setImageFiles([]); setImagePreviews([]); if (fileRef.current) fileRef.current.value = '' }}>
               Submit Another
             </Button>
               </div>
@@ -409,9 +411,22 @@ export default function Report() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Wildlife Condition <InfoPopover>
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Number of Animals
+          </label>
+          <input
+            type="number"
+            min="1"
+            value={form.quantity}
+            onChange={(e) => setForm({ ...form, quantity: Math.max(1, parseInt(e.target.value) || 1).toString() })}
+            className="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Wildlife Condition <InfoPopover>
                 <p className="font-semibold">Wildlife Condition</p>
                 <p className="mt-1 text-gray-300">Select the condition that best describes the wildlife at the time of reporting. This helps responders assess the urgency and determine the appropriate response.</p>
               </InfoPopover>
@@ -430,6 +445,7 @@ export default function Report() {
               <option value="Unknown">Unknown</option>
             </select>
           </div>
+        </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700">

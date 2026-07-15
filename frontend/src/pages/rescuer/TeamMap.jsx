@@ -57,7 +57,7 @@ export default function TeamMap() {
   const online = rescuers.filter((r) => r.userId !== user?.uuid).length
 
   return (
-    <main className="flex-1 overflow-y-auto p-6 md:p-8">
+    <main className="flex-1 overflow-y-auto p-3 md:p-8">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Team Map</h1>
@@ -65,7 +65,7 @@ export default function TeamMap() {
             {loadError || mapsFailed || mapTimedOut ? 'Google Maps is unavailable' : `See other rescuers in your area (${online} online)`}
           </p>
         </div>
-        <div className={`rounded-xl overflow-hidden border-2 ${loadError || mapsFailed || mapTimedOut ? 'bg-red-50 border-red-200' : 'border-gray-200'}`} style={{ height: '70vh' }}>
+        <div className={`rounded-xl overflow-hidden border-2 ${loadError || mapsFailed || mapTimedOut ? 'bg-red-50 border-red-200' : 'border-gray-200'}`} style={{ height: 'min(70vh, 500px)' }}>
           {loadError || mapsFailed || mapTimedOut ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">

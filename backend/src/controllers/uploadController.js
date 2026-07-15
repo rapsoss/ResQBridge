@@ -2,9 +2,10 @@ const multer = require("multer");
 const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const { v4: uuidv4 } = require("uuid");
 
-const STORAGE_DIR = path.join(__dirname, "..", "..", "storage", "uploads");
+const STORAGE_DIR = process.env.STORAGE_DIR || path.join(os.tmpdir(), "resqbridge-uploads");
 if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });
 
 const storage = multer.memoryStorage();
@@ -57,7 +58,8 @@ const uploadImage = async (req, res) => {
       .resize({ width: 1920, withoutEnlargement: true })
       .jpeg({ quality: 80, mozjpeg: true })
       .toFile(outputPath);
-  } catch {
+  } catch (err) {
+    console.error("Upload image processing error:", err);
     return res.status(400).json({ message: "Invalid or corrupt image file." });
   }
 

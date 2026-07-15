@@ -73,6 +73,7 @@ CREATE TABLE reports (
     category VARCHAR(100) NOT NULL,
     animalType VARCHAR(100) NOT NULL,
     urgency VARCHAR(50) NOT NULL,
+    quantity INT DEFAULT NULL,
     location VARCHAR(500) NOT NULL,
     description TEXT DEFAULT NULL,
     images TEXT DEFAULT NULL,

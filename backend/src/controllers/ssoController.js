@@ -10,7 +10,6 @@ function ssoCallback(req, res) {
   const token = jwt.sign(
     { uuid: user.uuid, email: user.email, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" },
   );
 
   logEvent({
@@ -24,7 +23,7 @@ function ssoCallback(req, res) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
     path: "/",
   });
 

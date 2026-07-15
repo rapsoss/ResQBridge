@@ -78,7 +78,7 @@ export default function RescuerActivity() {
   if (!user) return null
 
   return (
-    <main className="flex-1 overflow-y-auto p-6 md:p-8">
+    <main className="flex-1 overflow-y-auto p-3 md:p-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Activity Log</h1>

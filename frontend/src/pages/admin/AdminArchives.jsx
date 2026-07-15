@@ -142,6 +142,7 @@ export default function AdminArchives() {
                   </div>
 
                   <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+                    <span><strong>Quantity:</strong> {r.quantity ?? 1}</span>
                     <span><strong>Location:</strong> {r.location}</span>
                     <span><strong>Name:</strong> {r.name}</span>
                     <span><strong>Phone:</strong> {r.phone}</span>

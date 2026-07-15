@@ -78,7 +78,6 @@ const register = async (req, res) => {
   const token = jwt.sign(
     { uuid: userUuid, email, role: "rescuer" },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" },
   );
 
   await logEvent({ req, userId: userUuid, eventType: "register", metadata: { email, role: "rescuer" } });
@@ -87,7 +86,7 @@ const register = async (req, res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
     path: "/",
   });
 
@@ -134,7 +133,6 @@ const login = async (req, res) => {
   const token = jwt.sign(
     { uuid: user.uuid, email: user.email, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" },
   );
 
   await logEvent({ req, userId: user.uuid, eventType: "login", metadata: { email: user.email, role: user.role } });
@@ -143,7 +141,7 @@ const login = async (req, res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
     path: "/",
   });
 

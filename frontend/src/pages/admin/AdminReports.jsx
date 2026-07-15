@@ -307,7 +307,7 @@ export default function AdminReports({ adminPermissions }) {
                       )}
                     </div>
                     <p className="mt-0.5 text-xs text-gray-500">
-                      {CATEGORY_LABELS[r.category] || r.category} &middot; {r.animalType} &middot; {r.location}
+                      {CATEGORY_LABELS[r.category] || r.category} &middot; {r.animalType}{r.quantity ? ` \u00d7 ${r.quantity}` : ''} &middot; {r.location}
                     </p>
                   </div>
                   <svg className={`h-4 w-4 shrink-0 text-gray-400 transition-all ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -329,7 +329,7 @@ export default function AdminReports({ adminPermissions }) {
                       </div>
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Animal</p>
-                        <p className="text-sm text-gray-900 mt-0.5">{r.animalType}</p>
+                        <p className="text-sm text-gray-900 mt-0.5">{r.animalType}{r.quantity ? ` \u00d7 ${r.quantity}` : ''}</p>
                       </div>
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Location</p>

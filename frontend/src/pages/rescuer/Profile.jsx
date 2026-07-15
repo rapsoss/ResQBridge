@@ -31,7 +31,7 @@ export default function RescuerProfile() {
   const initials = (user.firstName?.[0] || '') + (user.lastName?.[0] || '')
 
   return (
-    <main className="flex-1 overflow-y-auto p-6 md:p-8">
+    <main className="flex-1 overflow-y-auto p-3 md:p-8">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Profile</h1>

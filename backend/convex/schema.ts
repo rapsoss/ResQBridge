@@ -52,6 +52,7 @@ export default defineSchema({
     category: v.string(),
     animalType: v.string(),
     urgency: v.string(),
+    quantity: v.optional(v.number()),
     location: v.string(),
     description: v.optional(v.string()),
     images: v.optional(v.string()),

@@ -46,7 +46,7 @@ const exportReports = async (_req, res) => {
       if (u) userMap[u.uuid] = u;
     }
   }
-  const headers = ["Report ID", "Name", "Phone Number", "Report Type", "Animal Type", "Landmark", "Description", "Status", "Assigned To", "Google Maps Link", "Created At", "Resolved At"];
+  const headers = ["Report ID", "Name", "Phone Number", "Report Type", "Animal Type", "Quantity", "Landmark", "Description", "Status", "Assigned To", "Google Maps Link", "Created At", "Resolved At"];
   const rows = reports.map((r) => {
     const assignedUser = r.assignedTo ? userMap[r.assignedTo] : null;
     return {
@@ -55,6 +55,7 @@ const exportReports = async (_req, res) => {
       "Phone Number": r.phone ? `\t${r.phone}` : "",
       "Report Type": REPORT_TYPE_MAP[r.category] || r.category || "Other",
       "Animal Type": r.animalType,
+      "Quantity": r.quantity ?? "",
       "Landmark": r.location,
       "Description": r.description || "",
       "Status": EXPORT_STATUS_MAP[r.status] || r.status,

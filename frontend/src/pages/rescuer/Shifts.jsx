@@ -70,7 +70,7 @@ export default function RescuerShifts() {
   const activeCount = shifts.filter((s) => s.active).length
 
   return (
-    <main className="flex-1 overflow-y-auto p-6 md:p-8">
+    <main className="flex-1 overflow-y-auto p-3 md:p-8">
       <div className="mx-auto max-w-4xl">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>

@@ -22,7 +22,40 @@
     "url": "https://github.com/resqbridgeofficial-cpu/ResQBridge/issues"
   },
   "homepage": "https://github.com/resqbridgeofficial-cpu/ResQBridge#readme",
+  "dependencies": {
+    "@react-google-maps/api": "^2.20.8",
+    "@tailwindcss/vite": "^4.3.0",
+    "bcryptjs": "^3.0.3",
+    "convex": "^1.41.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.2.0",
+    "hpp": "^0.2.3",
+    "ioredis": "^5.11.1",
+    "jsonwebtoken": "^9.0.3",
+    "leaflet": "^1.9.4",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.3",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "rate-limit-redis": "^5.0.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-leaflet": "^5.0.0",
+    "react-router-dom": "^7.17.0",
+    "recharts": "^3.8.1",
+    "sharp": "^0.35.2",
+    "tailwindcss": "^4.3.0",
+    "uuid": "^9.0.0",
+    "web-push": "^3.6.7"
+  },
   "devDependencies": {
-    "concurrently": "^10.0.3"
+    "concurrently": "^10.0.3",
+    "vite": "^8.0.16"
   }
 }
