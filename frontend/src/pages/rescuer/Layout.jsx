@@ -152,7 +152,7 @@ export default function RescuerLayout() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="flex-1 overflow-y-hidden px-4 py-6">
           <nav className="space-y-2">
             {navItems.map((item) => {
               const active = location.pathname === item.path
@@ -203,7 +203,7 @@ export default function RescuerLayout() {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col min-h-screen md:ml-64">
+      <div className="flex flex-1 flex-col min-h-screen md:ml-64" onClick={() => { if (sidebarOpen) setSidebarOpen(false) }}>
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-300 bg-white px-3 md:px-6 py-3 md:py-4 shadow-sm">
           <div className="flex items-center gap-4">
             <button
