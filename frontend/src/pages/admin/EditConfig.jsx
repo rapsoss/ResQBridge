@@ -1972,6 +1972,7 @@ function WildlifeGuideEditor({ config, setConfig, setDirty, uploading, setUpload
                               await new Promise((resolve, reject) => {
                                 const formData = new FormData()
                                 formData.append('image', f)
+                                formData.append('visibility', 'public')
                                 const xhr = new XMLHttpRequest()
                                 setUploading({ section: 'wildlifeGuide', index: i, progress: 0 })
                                 xhr.upload.onprogress = (ev) => {
