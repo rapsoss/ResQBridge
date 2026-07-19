@@ -65,6 +65,7 @@ const REPORT_INFO = {
 export default function Report() {
   const navigate = useNavigate()
   const fileRef = useRef(null)
+  const cameraRef = useRef(null)
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -537,7 +538,8 @@ export default function Report() {
             </label>
             <p className="mt-1 text-xs text-gray-400">You can add up to 5 photos.</p>
             <div className="mt-1.5">
-              <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp" multiple capture="environment" onChange={handleImages} className="hidden" />
+              <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={handleImages} className="hidden" />
+              <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImages} className="hidden" />
               {imagePreviews.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-3">
                   {imagePreviews.map((src, i) => (
@@ -555,16 +557,29 @@ export default function Report() {
                 </div>
               )}
               {imageFiles.length < 5 && (
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 transition hover:border-green-500 hover:text-green-600"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                  </svg>
-                  {imageFiles.length === 0 ? 'Add Photos' : 'Add More'}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => cameraRef.current?.click()}
+                    className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 transition hover:border-green-500 hover:text-green-600"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                    </svg>
+                    Take Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 transition hover:border-green-500 hover:text-green-600"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                    </svg>
+                    Choose from Gallery
+                  </button>
+                </div>
               )}
             </div>
           </div>
