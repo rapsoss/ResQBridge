@@ -4,7 +4,7 @@ const router = express.Router();
 const { authenticate, authorize, authorizeWithPermission } = require("../middleware/auth");
 const { validate } = require("../middleware/validate");
 const { asyncHandler } = require("../middleware/errorHandler");
-const { getUsers, getUser, updateUserRole, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport } = require("../controllers/adminController");
+const { getUsers, getUser, updateUserRole, createUser, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport } = require("../controllers/adminController");
 const { getLogs, getLogStats, getLogsByIP, deleteOldLogs } = require("../controllers/logController");
 const { getDashboardData } = require("../controllers/dashboardController");
 const { getConfig, updateConfig, getLandingConfig, updateLandingConfig } = require("../controllers/configController");
@@ -31,6 +31,15 @@ const updateRoleRules = [
   body("role").trim().notEmpty().withMessage("Role is required."),
 ];
 router.patch("/users/:uuid/role", authorizeWithPermission("users", "write"), uuidParam, updateRoleRules, validate, asyncHandler(updateUserRole));
+
+const createUserRules = [
+  body("firstName").trim().notEmpty().isLength({ max: 50 }).matches(/^[a-zA-Z\s'-]+$/).withMessage("Invalid first name."),
+  body("lastName").trim().notEmpty().isLength({ max: 50 }).matches(/^[a-zA-Z\s'-]+$/).withMessage("Invalid last name."),
+  body("email").trim().normalizeEmail().isEmail().withMessage("Valid email is required."),
+  body("phoneNumber").trim().notEmpty().matches(/^\+?\d{7,15}$/).withMessage("Valid phone number is required."),
+  body("password").trim().isLength({ min: 8 }).withMessage("Password must be at least 8 characters."),
+];
+router.post("/users/create", authorizeWithPermission("users", "write"), createUserRules, validate, asyncHandler(createUser));
 
 router.get("/logs", authorizeWithPermission("audit"), asyncHandler(getLogs));
 router.get("/logs/stats", authorizeWithPermission("audit"), asyncHandler(getLogStats));

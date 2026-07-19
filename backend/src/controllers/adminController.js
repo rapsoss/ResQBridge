@@ -1,6 +1,9 @@
+const bcrypt = require("bcryptjs");
+const { v4: uuidv4 } = require("uuid");
 const convexClient = require("../config/convex");
 const { anyApi } = require("convex/server");
 const { logEvent } = require("../middleware/logAudit");
+const { AppError } = require("../middleware/errorHandler");
 const { notifyAdmin } = require("../services/adminNotification");
 const { publish } = require("../services/notification");
 const cloudinary = require("../config/cloudinary");
@@ -86,6 +89,39 @@ const updateUserRole = async (req, res) => {
   await logEvent({ req, userId: req.user.uuid, eventType: "role_change", metadata: { targetUuid: uuid, oldRole: user.role, newRole: role } });
 
   res.json({ message: "User role updated successfully." });
+};
+
+const createUser = async (req, res) => {
+  const { firstName, lastName, email, phoneNumber, password } = req.body;
+
+  if (!firstName || !lastName || !email || !phoneNumber || !password) {
+    return res.status(400).json({ message: "firstName, lastName, email, phoneNumber, and password are required." });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const existingUser = await convexClient.query(anyApi.users.getUserByEmail, { email: normalizedEmail });
+  if (existingUser) {
+    return res.status(409).json({ message: "A user with this email already exists." });
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+  const userUuid = uuidv4();
+
+  await convexClient.mutation(anyApi.users.createUser, {
+    uuid: userUuid,
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    phoneNumber,
+    email: normalizedEmail,
+    password: hashedPassword,
+    role: "rescuer",
+  });
+
+  await logEvent({ req, userId: req.user.uuid, eventType: "admin_create_user", metadata: { targetEmail: normalizedEmail, role: "rescuer" } });
+
+  res.status(201).json({ message: "Rescuer account created successfully.", user: { uuid: userUuid, firstName, lastName, email: normalizedEmail, role: "rescuer" } });
 };
 
 const STATUS_MAP = {
@@ -240,4 +276,4 @@ const getStats = async (_req, res) => {
   res.json({ stats: { totalUsers, roleCounts } });
 };
 
-module.exports = { getUsers, getUser, updateUserRole, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport };
+module.exports = { getUsers, getUser, updateUserRole, createUser, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport };

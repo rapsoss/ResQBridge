@@ -76,6 +76,11 @@ export const admin = {
       method: 'PATCH',
       body: JSON.stringify({ role }),
     }),
+  createUser: (body) =>
+    request('/admin/users/create', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   getStats: () => request('/admin/stats'),
 
   getLogs: (params = {}) => {

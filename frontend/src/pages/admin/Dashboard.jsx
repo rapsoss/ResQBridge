@@ -175,6 +175,7 @@ export default function Dashboard() {
                 updating={updating}
                 onRoleChange={handleRoleChange}
                 onRefresh={fetchData}
+                onCreateUser={fetchData}
               />
             )}
             {activeTab === 'audit' && <AuditLogs />}
@@ -659,9 +660,13 @@ function DashboardTab({ stats, dashData, chartPeriod, onChartPeriodChange, userN
   )
 }
 
-function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh }) {
+function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, onCreateUser }) {
   const [openDropdown, setOpenDropdown] = useState(null)
   const [pendingRoleChange, setPendingRoleChange] = useState(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createForm, setCreateForm] = useState({ firstName: '', lastName: '', email: '', phoneNumber: '', password: '' })
+  const [createLoading, setCreateLoading] = useState(false)
+  const [createError, setCreateError] = useState('')
 
   function handleRoleClick(uuid, role) {
     setOpenDropdown(null)
@@ -673,6 +678,22 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh })
     { value: 'admin', label: 'Admin' },
   ]
 
+  async function handleCreateUser(e) {
+    e.preventDefault()
+    setCreateError('')
+    setCreateLoading(true)
+    try {
+      await adminApi.createUser(createForm)
+      setShowCreateModal(false)
+      setCreateForm({ firstName: '', lastName: '', email: '', phoneNumber: '', password: '' })
+      onCreateUser()
+    } catch (err) {
+      setCreateError(err.errors?.map((e) => e.message).join(', ') || err.message || 'Failed to create user.')
+    } finally {
+      setCreateLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -680,12 +701,23 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh })
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Users</h1>
           <p className="mt-1 text-sm text-gray-500">Manage all registered users and their roles.</p>
         </div>
-        <button onClick={onRefresh} className="flex items-center gap-2 rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow active:scale-95">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 rounded-lg bg-green-700 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-green-800 active:scale-95"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create Account
+          </button>
+          <button onClick={onRefresh} className="flex items-center gap-2 rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow active:scale-95">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -812,6 +844,88 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh })
                 </button>
               </DoubleConfirmation>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowCreateModal(false)}>
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Create Rescuer Account</h3>
+              <button onClick={() => setShowCreateModal(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <form onSubmit={handleCreateUser} className="mt-5 space-y-4">
+              {createError && (
+                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{createError}</div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">First Name</label>
+                  <input
+                    type="text" required
+                    value={createForm.firstName}
+                    onChange={(e) => setCreateForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    type="text" required
+                    value={createForm.lastName}
+                    onChange={(e) => setCreateForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email" required
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                <input
+                  type="tel" required
+                  value={createForm.phoneNumber}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                  placeholder="+639XXXXXXXXX"
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <input
+                  type="password" required minLength={8}
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, password: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createLoading}
+                  className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-800 disabled:opacity-50"
+                >
+                  {createLoading ? 'Creating...' : 'Create Account'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
