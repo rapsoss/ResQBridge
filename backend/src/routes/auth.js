@@ -49,7 +49,7 @@ const registerRules = [
 ];
 
 const loginRules = [
-  body("email").trim().isEmail().withMessage("Valid email is required."),
+  body("email").trim().notEmpty().withMessage("Email or phone number is required."),
   body("password").notEmpty().withMessage("Password is required."),
 ];
 

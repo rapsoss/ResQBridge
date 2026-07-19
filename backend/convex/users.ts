@@ -38,6 +38,16 @@ export const getUserByEmail = query({
   },
 });
 
+export const getUserByPhoneNumber = query({
+  args: { phoneNumber: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_phoneNumber", (q) => q.eq("phoneNumber", args.phoneNumber))
+      .unique();
+  },
+});
+
 export const getUserByUuid = query({
   args: { uuid: v.string() },
   handler: async (ctx, args) => {

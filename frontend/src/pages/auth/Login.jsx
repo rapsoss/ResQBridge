@@ -76,15 +76,17 @@ export default function Login() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                placeholder="you@example.com"
-                required
-              />
+                <label className="block text-sm font-medium text-gray-700">Email or Phone</label>
+                <input
+                  type="text"
+                  inputMode="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  placeholder="email@example.com or +639XXXXXXXXX"
+                  required
+                  autoComplete="username"
+                />
             </div>
 
             <div>

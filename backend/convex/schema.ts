@@ -29,7 +29,8 @@ export default defineSchema({
     )),
   })
     .index("by_email", ["email"])
-    .index("by_uuid", ["uuid"]),
+    .index("by_uuid", ["uuid"])
+    .index("by_phoneNumber", ["phoneNumber"]),
 
   admins: defineTable({
     email: v.string(),
