@@ -2,6 +2,21 @@ const convexClient = require("../config/convex");
 const { anyApi } = require("convex/server");
 const { logEvent } = require("../middleware/logAudit");
 const { notifyAdmin } = require("../services/adminNotification");
+const cloudinary = require("../config/cloudinary");
+
+function resolveImageUrls(imagesField) {
+  if (!imagesField) return [];
+  const items = typeof imagesField === "string" ? imagesField.split(",").filter(Boolean) : imagesField;
+  return items.map((img) => {
+    if (img.startsWith("http") || img.startsWith("/api/")) return img;
+    return cloudinary.url(img, {
+      type: "authenticated",
+      sign_url: true,
+      secure: true,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    });
+  });
+}
 
 const getUsers = async (_req, res) => {
   const users = await convexClient.query(anyApi.users.getAllUsers);
@@ -77,7 +92,6 @@ const STATUS_MAP = {
   assigned: "assigned",
   en_route: "en_route",
   in_progress: "in_progress",
-  transport_to_pwrccc: "transport_to_pwrccc",
   resolved: "resolved",
   failed: "failed",
 };
@@ -93,7 +107,7 @@ const getAdminReports = async (req, res) => {
     urgency: r.urgency || "medium",
     location: r.location,
     description: r.description,
-    images: r.images ? (Array.isArray(r.images) ? r.images : [r.images]) : [],
+    images: r.images ? resolveImageUrls(r.images) : [],
     status: STATUS_MAP[r.status] || r.status,
     assignedTo: r.assignedRescuerEmail || r.assignedTo || null,
     assignedUser: r.assignedUser || null,

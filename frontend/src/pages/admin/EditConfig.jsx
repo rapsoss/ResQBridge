@@ -213,6 +213,7 @@ export default function EditConfig({ section }) {
   function handleGalleryImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ section: 'gallery', index, progress: 0 })
     xhr.upload.onprogress = (e) => {
@@ -274,6 +275,7 @@ export default function EditConfig({ section }) {
   function handlePartnerImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ section: 'partner', index, progress: 0 })
     xhr.upload.onprogress = (e) => {
@@ -340,6 +342,7 @@ export default function EditConfig({ section }) {
   function handleCarouselImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ index, progress: 0 })
     xhr.upload.onprogress = (e) => {
@@ -375,6 +378,7 @@ export default function EditConfig({ section }) {
   function handleNewsImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ section: 'news', index, progress: 0 })
     xhr.upload.onprogress = (e) => {
@@ -428,6 +432,7 @@ export default function EditConfig({ section }) {
   function handleEventImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ section: 'event', index, progress: 0 })
     xhr.upload.onprogress = (e) => {
@@ -492,6 +497,7 @@ export default function EditConfig({ section }) {
   function handleMentionImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ section: 'mention', index, progress: 0 })
     xhr.upload.onprogress = (e) => {
@@ -518,6 +524,7 @@ export default function EditConfig({ section }) {
   function handleAwardImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ section: 'award', index, progress: 0 })
     xhr.upload.onprogress = (e) => {
@@ -554,6 +561,7 @@ export default function EditConfig({ section }) {
   function handleStoryImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ section: 'story', index, progress: 0 })
     xhr.upload.onprogress = (e) => {

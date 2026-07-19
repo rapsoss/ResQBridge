@@ -16,7 +16,7 @@ const pushRoutes = require("./routes/push");
 const { globalLimiter, authLimiter, otpLimiter, adminLimiter } = require("./middleware/rateLimiter");
 const { errorHandler, asyncHandler } = require("./middleware/errorHandler");
 const { logEvent } = require("./middleware/logAudit");
-const { authenticate } = require("./middleware/auth");
+const { authenticate, authorize } = require("./middleware/auth");
 const { honeypot } = require("./middleware/honeypot");
 const convexClient = require("./config/convex");
 const { anyApi } = require("convex/server");
@@ -32,7 +32,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "https://maps.googleapis.com", "https://maps.gstatic.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://maps.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https://maps.gstatic.com", "https://maps.googleapis.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://maps.gstatic.com", "https://maps.googleapis.com", "https://res.cloudinary.com"],
       connectSrc: ["'self'", "https://maps.googleapis.com"],
       frameSrc: ["'self'", "https://www.openstreetmap.org"],
       fontSrc: ["'self'"],
@@ -137,8 +137,10 @@ app.use("/api/v1/rescuer", rescuerRoutes);
 app.use("/api/v1/push", pushRoutes);
 
 const { serveFile } = require("./controllers/uploadController");
+const { serveMedia } = require("./controllers/mediaController");
 app.get("/api/v1/files/:filename", authenticate, asyncHandler(serveFile));
 app.get("/api/v1/public/files/:filename", asyncHandler(serveFile));
+app.get("/api/v1/media/:publicId", authenticate, authorize("admin", "superadmin", "rescuer"), asyncHandler(serveMedia));
 
 app.use((_req, res) => {
   res.status(404).json({ message: "Route not found" });

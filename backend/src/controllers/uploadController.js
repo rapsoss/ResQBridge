@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const { v4: uuidv4 } = require("uuid");
+const cloudinary = require("../config/cloudinary");
 
 const STORAGE_DIR = process.env.STORAGE_DIR || path.join(os.tmpdir(), "resqbridge-uploads");
 if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });
@@ -36,34 +37,60 @@ const fileFilter = (_req, file, cb) => {
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 15 * 1024 * 1024 } });
 
+function uploadToCloudinary(buffer, options) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+      if (error) reject(error);
+      else resolve(result);
+    });
+    stream.end(buffer);
+  });
+}
+
 const uploadImage = async (req, res) => {
   if (!req.file) return res.status(400).json({ message: "No file provided." });
 
   const ext = MIME_MAP[req.file.mimetype] || path.extname(req.file.originalname).toLowerCase();
   const isAudio = ALLOWED_AUDIO.has(ext);
-
-  if (isAudio) {
-    const filename = `${uuidv4()}${ext}`;
-    const outputPath = path.join(STORAGE_DIR, filename);
-    fs.writeFileSync(outputPath, req.file.buffer);
-    return res.json({ url: `/api/v1/public/files/${filename}` });
-  }
-
-  const safeExt = ALLOWED_EXTENSIONS.has(ext) ? ext : ".jpg";
-  const filename = `${uuidv4()}${safeExt}`;
-  const outputPath = path.join(STORAGE_DIR, filename);
+  const isPublic = req.body.visibility === "public";
+  const uuid = uuidv4();
 
   try {
-    await sharp(req.file.buffer)
+    if (isAudio) {
+      const result = await uploadToCloudinary(req.file.buffer, {
+        folder: "resqbridge/audio",
+        public_id: uuid,
+        resource_type: "auto",
+      });
+      return res.json({ url: result.secure_url });
+    }
+
+    const processedBuffer = await sharp(req.file.buffer)
       .resize({ width: 1920, withoutEnlargement: true })
       .jpeg({ quality: 80, mozjpeg: true })
-      .toFile(outputPath);
+      .toBuffer();
+
+    const options = {
+      folder: "resqbridge/images",
+      public_id: uuid,
+      resource_type: "image",
+    };
+
+    if (isPublic) {
+      const result = await uploadToCloudinary(processedBuffer, options);
+      return res.json({ url: result.secure_url });
+    }
+
+    const result = await uploadToCloudinary(processedBuffer, {
+      ...options,
+      type: "authenticated",
+    });
+
+    res.json({ url: result.public_id });
   } catch (err) {
-    console.error("Upload image processing error:", err);
+    console.error("Upload error:", err);
     return res.status(400).json({ message: "Invalid or corrupt image file." });
   }
-
-  res.json({ url: `/api/v1/public/files/${filename}` });
 };
 
 const MIME_LOOKUP = {
@@ -99,4 +126,4 @@ function serveFile(req, res) {
   res.sendFile(filePath);
 }
 
-module.exports = { upload, uploadImage, fileFilter, ALLOWED_EXTENSIONS, serveFile, STORAGE_DIR };
+module.exports = { upload, uploadImage, fileFilter, ALLOWED_EXTENSIONS, serveFile, STORAGE_DIR, uploadToCloudinary };
