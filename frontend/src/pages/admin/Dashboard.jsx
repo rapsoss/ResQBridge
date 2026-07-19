@@ -665,6 +665,7 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
   const [pendingRoleChange, setPendingRoleChange] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({ firstName: '', lastName: '', email: '', phoneNumber: '', password: '' })
+  const [createPhoneError, setCreatePhoneError] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
   const [createError, setCreateError] = useState('')
 
@@ -681,11 +682,24 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
   async function handleCreateUser(e) {
     e.preventDefault()
     setCreateError('')
+    setCreatePhoneError('')
+    const phone = createForm.phoneNumber
+    if (!phone || phone.length !== 10) {
+      setCreatePhoneError('Number must be exactly 10 digits')
+      setCreateLoading(false)
+      return
+    }
+    if (phone[0] !== '9') {
+      setCreatePhoneError('Number must start with 9')
+      setCreateLoading(false)
+      return
+    }
     setCreateLoading(true)
     try {
-      await adminApi.createUser(createForm)
+      await adminApi.createUser({ ...createForm, phoneNumber: '+63' + phone })
       setShowCreateModal(false)
       setCreateForm({ firstName: '', lastName: '', email: '', phoneNumber: '', password: '' })
+      setCreatePhoneError('')
       onCreateUser()
     } catch (err) {
       setCreateError(err.errors?.map((e) => e.message).join(', ') || err.message || 'Failed to create user.')
@@ -892,13 +906,33 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                <input
-                  type="tel" required
-                  value={createForm.phoneNumber}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, phoneNumber: e.target.value }))}
-                  placeholder="+639XXXXXXXXX"
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                />
+                <div className="mt-1 flex">
+                  <span className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 px-3 text-sm text-gray-600">+63</span>
+                  <input
+                    type="tel" required
+                    inputMode="numeric"
+                    value={createForm.phoneNumber}
+                    onBeforeInput={(e) => { if (e.data && /\D/.test(e.data)) e.preventDefault() }}
+                    onPaste={(e) => {
+                      const text = (e.clipboardData || window.clipboardData).getData('text')
+                      if (text && /\D/.test(text)) e.preventDefault()
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      setCreateForm((prev) => ({ ...prev, phoneNumber: val }))
+                      if (val.length > 0 && val[0] !== '9') {
+                        setCreatePhoneError('Number must start with 9')
+                      } else if (val.length > 0 && val.length < 10) {
+                        setCreatePhoneError('Number must be exactly 10 digits')
+                      } else {
+                        setCreatePhoneError('')
+                      }
+                    }}
+                    className="block w-full rounded-r-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                    placeholder="9XX XXX XXXX"
+                  />
+                </div>
+                {createPhoneError && <p className="mt-1 text-xs text-red-500">{createPhoneError}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Password</label>
