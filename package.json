@@ -26,6 +26,7 @@
     "@react-google-maps/api": "^2.20.8",
     "@tailwindcss/vite": "^4.3.0",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.10.0",
     "convex": "^1.41.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
