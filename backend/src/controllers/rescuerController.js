@@ -341,6 +341,25 @@ const getNotes = async (req, res) => {
   res.json({ notes });
 };
 
+const getNotifications = async (req, res) => {
+  const userId = req.user.uuid;
+  const limit = parseInt(req.query.limit, 10) || 50;
+  const notifications = await convexClient.query(anyApi.rescuerNotifications.getNotifications, {
+    userId,
+    limit,
+  });
+  const unreadCount = await convexClient.query(anyApi.rescuerNotifications.getUnreadCount, {
+    userId,
+  });
+  res.json({ notifications, unreadCount });
+};
+
+const markAllNotificationsRead = async (req, res) => {
+  const userId = req.user.uuid;
+  await convexClient.mutation(anyApi.rescuerNotifications.markAllAsRead, { userId });
+  res.json({ message: "All notifications marked as read." });
+};
+
 module.exports = {
   getReports,
   updateReportStatus,
@@ -352,4 +371,6 @@ module.exports = {
   getNotes,
   updateLocation,
   rejectAssignment,
+  getNotifications,
+  markAllNotificationsRead,
 };

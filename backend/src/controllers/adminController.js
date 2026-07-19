@@ -2,6 +2,7 @@ const convexClient = require("../config/convex");
 const { anyApi } = require("convex/server");
 const { logEvent } = require("../middleware/logAudit");
 const { notifyAdmin } = require("../services/adminNotification");
+const { publish } = require("../services/notification");
 const cloudinary = require("../config/cloudinary");
 
 function resolveImageUrls(imagesField) {
@@ -128,6 +129,24 @@ const assignReport = async (req, res) => {
     reportId: id,
     userId,
   });
+
+  const user = await convexClient.query(anyApi.users.getUserByUuid, { uuid: userId });
+  const assignedByName = user ? `${user.firstName} ${user.lastName}`.trim() : "a rescuer";
+
+  await convexClient.mutation(anyApi.rescuerNotifications.insertNotification, {
+    userId,
+    reportId: id,
+    type: "assignment",
+    message: `New report assigned to you`,
+  });
+
+  publish({
+    type: "report:claimed",
+    userId,
+    reportId: id,
+    assignedByName,
+  });
+
   res.json({ message: "Report assigned." });
 };
 

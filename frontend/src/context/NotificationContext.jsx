@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
+import { rescuer as rescuerApi } from '../services/api'
+import { useAuth } from './AuthContext'
 
 const NotificationContext = createContext(null)
 
@@ -9,7 +11,9 @@ export function useNotifications() {
 }
 
 export function NotificationProvider({ children }) {
+  const { user } = useAuth()
   const [toasts, setToasts] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const eventSourceRef = useRef(null)
 
@@ -26,11 +30,29 @@ export function NotificationProvider({ children }) {
     setToasts([])
   }, [])
 
-  const markAllRead = useCallback(() => {
-    setUnreadCount(0)
+  const fetchNotifications = useCallback(async () => {
+    if (!user || user.role !== 'rescuer') return
+    try {
+      const data = await rescuerApi.getNotifications()
+      setNotifications(data.notifications)
+      setUnreadCount(data.unreadCount)
+    } catch {}
+  }, [user])
+
+  const markAllRead = useCallback(async () => {
+    try {
+      await rescuerApi.markAllNotificationsRead()
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+      setUnreadCount(0)
+    } catch {}
   }, [])
 
   useEffect(() => {
+    fetchNotifications()
+  }, [user, fetchNotifications])
+
+  useEffect(() => {
+    if (!user || (user.role !== 'rescuer' && user.role !== 'admin' && user.role !== 'superadmin')) return
     const es = new EventSource('/api/v1/report/updates', { withCredentials: true })
     eventSourceRef.current = es
 
@@ -38,9 +60,10 @@ export function NotificationProvider({ children }) {
       try {
         const event = JSON.parse(e.data)
         if (event.type === 'report:claimed') {
-          addToast({ type: 'info', title: 'Report Claimed', message: `Report assigned to ${event.assignedByName || 'a rescuer'}` })
+          addToast({ type: 'info', title: 'Report Claimed', message: `Report assigned to ${event.assignedByName || 'a rescuer'}`, reportId: event.reportId })
+          fetchNotifications()
         } else if (event.type === 'report:status') {
-          addToast({ type: 'success', title: 'Status Update', message: `Report updated to ${event.status?.replace('_', ' ')}` })
+          addToast({ type: 'success', title: 'Status Update', message: `Report updated to ${event.status?.replace('_', ' ')}`, reportId: event.reportId })
         }
       } catch {}
     }
@@ -48,10 +71,10 @@ export function NotificationProvider({ children }) {
     es.onerror = () => {}
 
     return () => es.close()
-  }, [addToast])
+  }, [user, addToast, fetchNotifications])
 
   return (
-    <NotificationContext.Provider value={{ toasts, unreadCount, clearToasts, markAllRead }}>
+    <NotificationContext.Provider value={{ toasts, notifications, unreadCount, clearToasts, markAllRead, fetchNotifications }}>
       {children}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm">
         {toasts.map((t) => (

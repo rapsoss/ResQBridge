@@ -65,7 +65,7 @@ const navItems = [
 export default function RescuerLayout() {
   const { user, loading: authLoading, logout } = useAuth()
   const { userPos, requestLocation } = useLocationContext()
-  const { toasts, unreadCount, markAllRead } = useNotifications()
+  const { notifications, unreadCount, markAllRead, fetchNotifications } = useNotifications()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -262,28 +262,42 @@ export default function RescuerLayout() {
         >
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <h3 className="text-base font-bold text-gray-900">Notifications</h3>
-            {toasts.length > 0 && (
+            <div className="flex gap-2">
               <button
-                onClick={() => { markAllRead(); setNotifOpen(false) }}
-                className="text-xs font-semibold text-amber-600 hover:text-amber-700"
+                onClick={() => { navigate('/rescuer/notifications'); setNotifOpen(false) }}
+                className="text-xs font-semibold text-gray-500 hover:text-gray-700"
               >
-                Mark all read
+                View all
               </button>
-            )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={() => { markAllRead() }}
+                  className="text-xs font-semibold text-amber-600 hover:text-amber-700"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
           </div>
           <div className="max-h-80 overflow-y-auto px-5 py-3 space-y-2">
-            {toasts.length === 0 ? (
+            {notifications.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-6">No notifications</p>
             ) : (
-              toasts.map((t) => (
+              notifications.map((n) => (
                 <div
-                  key={t.id}
-                  className={`rounded-xl border-2 px-4 py-3 ${
-                    t.type === 'success' ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50'
+                  key={n._id}
+                  onClick={() => {
+                    navigate('/rescuer/assignments', { state: { reportId: n.reportId }, replace: true })
+                    setNotifOpen(false)
+                  }}
+                  className={`cursor-pointer rounded-xl border-2 px-4 py-3 transition-colors hover:bg-amber-50 ${
+                    n.read ? 'border-gray-200 bg-white' : 'border-amber-300 bg-amber-50'
                   }`}
                 >
-                  <p className="text-sm font-bold text-gray-900">{t.title}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">{t.message}</p>
+                  <p className={`text-sm ${n.read ? 'font-semibold text-gray-700' : 'font-bold text-gray-900'}`}>{n.message}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
               ))
             )}

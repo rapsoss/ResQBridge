@@ -212,6 +212,10 @@ export const rescuer = {
       method: 'POST',
       body: JSON.stringify({ reportId, audioUrl, duration }),
     }),
+
+  getNotifications: () => request('/rescuer/notifications'),
+  markAllNotificationsRead: () =>
+    request('/rescuer/notifications/read-all', { method: 'POST' }),
 }
 
 export const logs = {

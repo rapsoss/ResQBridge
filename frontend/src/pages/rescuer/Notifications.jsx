@@ -1,19 +1,17 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useNotifications } from '../../context/NotificationContext'
+import { rescuer as rescuerApi } from '../../services/api'
 
 export default function RescuerNotifications() {
-  const { toasts, unreadCount, markAllRead, clearToasts } = useNotifications()
-  const [history, setHistory] = useState([])
+  const { notifications, unreadCount, markAllRead, fetchNotifications } = useNotifications()
+  const navigate = useNavigate()
 
   useEffect(() => {
-    if (toasts.length > 0) {
-      setHistory((prev) => {
-        const existing = new Set(prev.map((t) => t.id))
-        const newOnes = toasts.filter((t) => !existing.has(t.id))
-        return [...newOnes, ...prev]
-      })
-    }
-  }, [toasts])
+    fetchNotifications()
+  }, [fetchNotifications])
+
+  const allRead = notifications.every((n) => n.read)
 
   return (
     <main className="flex-1 overflow-y-auto p-3 md:p-8">
@@ -22,11 +20,11 @@ export default function RescuerNotifications() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Notifications</h1>
             <p className="mt-1 text-lg text-gray-500">
-              {history.length} total{unreadCount > 0 ? ` - ${unreadCount} unread` : ''}
+              {notifications.length} total{unreadCount > 0 ? ` - ${unreadCount} unread` : ''}
             </p>
           </div>
           <div className="flex gap-2">
-            {unreadCount > 0 && (
+            {!allRead && (
               <button
                 onClick={markAllRead}
                 className="rounded-xl bg-amber-600 px-5 py-3 text-base font-bold text-white hover:bg-amber-700 transition-colors shadow"
@@ -34,18 +32,10 @@ export default function RescuerNotifications() {
                 Mark All Read
               </button>
             )}
-            {history.length > 0 && (
-              <button
-                onClick={() => { clearToasts(); setHistory([]) }}
-                className="rounded-xl bg-gray-100 px-5 py-3 text-base font-bold text-gray-700 hover:bg-gray-200 border-2 border-gray-300 transition-colors"
-              >
-                Clear All
-              </button>
-            )}
           </div>
         </div>
 
-        {history.length === 0 ? (
+        {notifications.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed border-gray-300 bg-white p-16 text-center">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-100">
               <svg className="h-10 w-10 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
@@ -57,28 +47,31 @@ export default function RescuerNotifications() {
           </div>
         ) : (
           <div className="space-y-3">
-            {history.map((t) => (
+            {notifications.map((n) => (
               <div
-                key={t.id}
-                className={`rounded-2xl border-2 bg-white px-6 py-5 transition-all ${
-                  t.type === 'success' ? 'border-green-300' : 'border-amber-300'
+                key={n._id}
+                onClick={() => navigate('/rescuer/assignments', { state: { reportId: n.reportId }, replace: true })}
+                className={`cursor-pointer rounded-2xl border-2 bg-white px-6 py-5 transition-colors hover:bg-amber-50 ${
+                  n.read ? 'border-gray-200' : 'border-amber-300'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                    t.type === 'success' ? 'bg-green-100' : 'bg-amber-100'
+                    n.read ? 'bg-gray-100' : 'bg-amber-100'
                   }`}>
-                    <svg className={`h-4 w-4 ${t.type === 'success' ? 'text-green-600' : 'text-amber-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      {t.type === 'success'
-                        ? <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        : <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                      }
+                    <svg className={`h-4 w-4 ${n.read ? 'text-gray-500' : 'text-amber-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                     </svg>
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-base font-bold text-gray-900">{t.title}</p>
-                    <p className="mt-0.5 text-sm text-gray-600">{t.message}</p>
+                    <p className={`text-base ${n.read ? 'font-semibold text-gray-700' : 'font-bold text-gray-900'}`}>{n.message}</p>
+                    <p className="mt-0.5 text-sm text-gray-500">
+                      {new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
                   </div>
+                  {!n.read && (
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+                  )}
                 </div>
               </div>
             ))}

@@ -88,6 +88,17 @@ export default defineSchema({
     .index("by_read", ["read"])
     .index("by_createdAt", ["createdAt"]),
 
+  rescuerNotifications: defineTable({
+    userId: v.string(),
+    reportId: v.string(),
+    type: v.string(),
+    message: v.string(),
+    read: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_read", ["userId", "read"]),
+
   activityLogs: defineTable({
     userId: v.string(),
     action: v.string(),

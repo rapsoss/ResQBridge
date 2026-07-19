@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLocationContext } from '../../context/LocationContext'
 import { DoubleConfirmation, SkeletonCard, Modal } from '../../components/ui'
@@ -59,6 +60,7 @@ function getDistanceInfo(userPos, lat, lng) {
 export default function RescuerAssignments() {
   const { user } = useAuth()
   const { userPos, requestLocation } = useLocationContext()
+  const location = useLocation()
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -178,6 +180,18 @@ export default function RescuerAssignments() {
   }, [user, filter])
 
   useEffect(() => { setPage(1); fetchReports() }, [user, filter])
+
+  useEffect(() => {
+    const reportId = location.state?.reportId
+    if (!reportId || reports.length === 0) return
+    const match = reports.find((r) => r._id === reportId)
+    if (match) {
+      setSelectedReport(match)
+      loadChecklist(reportId)
+      loadVoiceNotes(reportId)
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state?.reportId, reports])
 
   useEffect(() => {
     let es
