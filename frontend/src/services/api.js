@@ -81,6 +81,11 @@ export const admin = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  updatePassword: (uuid, password) =>
+    request(`/admin/users/${uuid}/password`, {
+      method: 'PATCH',
+      body: JSON.stringify({ password }),
+    }),
   getStats: () => request('/admin/stats'),
 
   getLogs: (params = {}) => {

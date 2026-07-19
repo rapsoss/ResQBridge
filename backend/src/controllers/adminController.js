@@ -276,4 +276,27 @@ const getStats = async (_req, res) => {
   res.json({ stats: { totalUsers, roleCounts } });
 };
 
-module.exports = { getUsers, getUser, updateUserRole, createUser, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport };
+const updatePassword = async (req, res) => {
+  const { uuid } = req.params;
+  const { password } = req.body;
+
+  if (!password || password.length < 8) {
+    return res.status(400).json({ message: "Password must be at least 8 characters." });
+  }
+
+  const user = await convexClient.query(anyApi.users.getUserByUuid, { uuid });
+  if (!user) {
+    return res.status(404).json({ message: "User not found." });
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  await convexClient.mutation(anyApi.users.updatePassword, { uuid, password: hashedPassword });
+
+  await logEvent({ req, userId: req.user.uuid, eventType: "admin_update_password", metadata: { targetUuid: uuid } });
+
+  res.json({ message: "Password updated successfully." });
+};
+
+module.exports = { getUsers, getUser, updateUserRole, createUser, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport, updatePassword };

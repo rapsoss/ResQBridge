@@ -668,6 +668,10 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
   const [createPhoneError, setCreatePhoneError] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [passwordUser, setPasswordUser] = useState(null)
+  const [passwordValue, setPasswordValue] = useState('')
+  const [passwordUpdating, setPasswordUpdating] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
 
   function handleRoleClick(uuid, role) {
     setOpenDropdown(null)
@@ -788,7 +792,7 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
                       {isOpen && (
                         <>
                           <div className="fixed inset-0 z-10" onClick={() => setOpenDropdown(null)} />
-                          <div className="absolute right-0 top-full z-20 mt-1 w-40 origin-top-right rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                          <div className="absolute right-0 top-full z-20 mt-1 w-44 origin-top-right rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                             {roles.map((r) => {
                               const isActive = u.role === r.value
                               return (
@@ -813,6 +817,16 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
                                 </button>
                               )
                             })}
+                            <div className="border-t border-gray-100" />
+                            <button
+                              onClick={() => { setOpenDropdown(null); setPasswordUser(u); setPasswordValue(''); setPasswordError('') }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                              <svg className="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m0 0l-9 9a.75.75 0 01-.53.22H6.75a.75.75 0 01-.75-.75v-2.47a.75.75 0 01.22-.53l9-9a3 3 0 013 3z" />
+                              </svg>
+                              Change Password
+                            </button>
                           </div>
                         </>
                       )}
@@ -858,6 +872,53 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
                 </button>
               </DoubleConfirmation>
             </div>
+          </div>
+        </div>
+      )}
+
+      {passwordUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Change Password</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Setting new password for <strong>{passwordUser.firstName} {passwordUser.lastName}</strong>
+            </p>
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              setPasswordError('')
+              if (passwordValue.length < 8) { setPasswordError('Password must be at least 8 characters.'); return }
+              setPasswordUpdating(true)
+              try {
+                await adminApi.updatePassword(passwordUser.uuid, passwordValue)
+                setPasswordUser(null)
+                setPasswordValue('')
+              } catch (err) {
+                setPasswordError(err.message || 'Failed to update password.')
+              } finally { setPasswordUpdating(false) }
+            }} className="mt-4 space-y-4">
+              {passwordError && (
+                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{passwordError}</div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">New Password</label>
+                <input
+                  type="password" required minLength={8}
+                  value={passwordValue}
+                  onChange={(e) => setPasswordValue(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <button type="button" onClick={() => { setPasswordUser(null); setPasswordValue(''); setPasswordError('') }}
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={passwordUpdating}
+                  className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-800 disabled:opacity-50">
+                  {passwordUpdating ? 'Saving...' : 'Save Password'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
