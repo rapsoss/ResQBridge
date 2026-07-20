@@ -1,11 +1,7 @@
-const sharp = require("sharp");
-const path = require("path");
-const { v4: uuidv4 } = require("uuid");
 const convexClient = require("../config/convex");
 const { anyApi } = require("convex/server");
 const { logEvent } = require("../middleware/logAudit");
 const { notifyAdmin } = require("../services/adminNotification");
-const { uploadToCloudinary } = require("./uploadController");
 
 const URGENCY_MAP = {
   Healthy: "low",
@@ -16,6 +12,7 @@ const URGENCY_MAP = {
 };
 
 const submitReport = async (req, res) => {
+  try {
   const { name, phone, category, animalType, wildlifeCondition, location, description, latitude, longitude, quantity } = req.body;
 
   if (name && name.length > 100) {
@@ -45,21 +42,6 @@ const submitReport = async (req, res) => {
   const lng = longitude ? parseFloat(longitude) : undefined;
 
   const images = [];
-  if (req.files && req.files.length) {
-    for (const file of req.files) {
-      const processedBuffer = await sharp(file.buffer)
-        .resize({ width: 1920, withoutEnlargement: true })
-        .jpeg({ quality: 80, mozjpeg: true })
-        .toBuffer();
-      const result = await uploadToCloudinary(processedBuffer, {
-        folder: "resqbridge/report-images",
-        public_id: uuidv4(),
-        resource_type: "image",
-        type: "authenticated",
-      });
-      images.push(result.public_id);
-    }
-  }
 
   const metadata = {
     name: name || "Anonymous",
@@ -100,6 +82,10 @@ const submitReport = async (req, res) => {
   });
 
   res.status(201).json({ message: "Report submitted successfully.", images });
+} catch (err) {
+  console.error("submitReport error:", err);
+  res.status(500).json({ message: "Internal server error: " + err.message });
+  }
 };
 
 module.exports = { submitReport };

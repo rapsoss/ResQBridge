@@ -13,6 +13,7 @@ const adminRoutes = require("./routes/admin");
 const reportRoutes = require("./routes/report");
 const rescuerRoutes = require("./routes/rescuer");
 const pushRoutes = require("./routes/push");
+const { sendEmail } = require("./services/email");
 const { globalLimiter, authLimiter, otpLimiter, adminLimiter } = require("./middleware/rateLimiter");
 const { errorHandler, asyncHandler } = require("./middleware/errorHandler");
 const { logEvent } = require("./middleware/logAudit");
@@ -97,7 +98,17 @@ app.post("/api/v1/contact", honeypot(), asyncHandler(async (req, res) => {
   if (!name || !email || !message) {
     return res.status(400).json({ message: "Name, email, and message are required." });
   }
-  await logEvent({ req, eventType: "contact", section: "contact", metadata: { name, email, subject } });
+  await logEvent({ req, eventType: "contact", section: "contact", metadata: { name, email, subject, message } });
+  await sendEmail({
+    to: "resqbridge.official@gmail.com",
+    subject: `${subject || "Contact"} — ${name}`,
+    html: `<h2>${subject || "Contact"} Submission</h2>
+<p><strong>From:</strong> ${name} (${email})</p>
+<p><strong>Subject:</strong> ${subject || "N/A"}</p>
+<p><strong>Message:</strong></p>
+<p>${message}</p>`,
+    text: `${subject || "Contact"} Submission\n\nFrom: ${name} (${email})\nSubject: ${subject || "N/A"}\nMessage:\n${message}`,
+  });
   res.json({ message: "Message sent successfully." });
 }));
 

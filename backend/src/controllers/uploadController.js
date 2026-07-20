@@ -12,17 +12,12 @@ if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });
 const storage = multer.memoryStorage();
 
 const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
-const ALLOWED_AUDIO = new Set([".webm", ".mp3", ".ogg", ".wav"]);
 
 const MIME_MAP = {
   "image/jpeg": ".jpg",
   "image/png": ".png",
   "image/gif": ".gif",
   "image/webp": ".webp",
-  "audio/webm": ".webm",
-  "audio/mpeg": ".mp3",
-  "audio/ogg": ".ogg",
-  "audio/wav": ".wav",
 };
 
 const ALLOWED_MIMES = new Set(Object.keys(MIME_MAP));
@@ -30,9 +25,9 @@ const ALLOWED_MIMES = new Set(Object.keys(MIME_MAP));
 const fileFilter = (_req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
   const mimeOk = ALLOWED_MIMES.has(file.mimetype);
-  const extOk = ALLOWED_EXTENSIONS.has(ext) || ALLOWED_AUDIO.has(ext);
+  const extOk = ALLOWED_EXTENSIONS.has(ext);
   if (mimeOk && extOk) cb(null, true);
-  else cb(new Error("Only images and audio files are allowed."), false);
+  else cb(new Error("Only image files are allowed."), false);
 };
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 15 * 1024 * 1024 } });
@@ -51,20 +46,10 @@ const uploadImage = async (req, res) => {
   if (!req.file) return res.status(400).json({ message: "No file provided." });
 
   const ext = MIME_MAP[req.file.mimetype] || path.extname(req.file.originalname).toLowerCase();
-  const isAudio = ALLOWED_AUDIO.has(ext);
   const isPublic = req.body.visibility === "public";
   const uuid = uuidv4();
 
   try {
-    if (isAudio) {
-      const result = await uploadToCloudinary(req.file.buffer, {
-        folder: "resqbridge/audio",
-        public_id: uuid,
-        resource_type: "auto",
-      });
-      return res.json({ url: result.secure_url });
-    }
-
     const processedBuffer = await sharp(req.file.buffer)
       .resize({ width: 1920, withoutEnlargement: true })
       .jpeg({ quality: 80, mozjpeg: true })
@@ -99,10 +84,6 @@ const MIME_LOOKUP = {
   ".png": "image/png",
   ".gif": "image/gif",
   ".webp": "image/webp",
-  ".webm": "audio/webm",
-  ".mp3": "audio/mpeg",
-  ".ogg": "audio/ogg",
-  ".wav": "audio/wav",
 };
 
 function serveFile(req, res) {

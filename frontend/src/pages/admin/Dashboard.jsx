@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { DoubleConfirmation, SkeletonTable } from '../../components/ui'
+import { SkeletonTable } from '../../components/ui'
 import { admin as adminApi } from '../../services/api'
 import NotificationBell from '../../components/admin/NotificationBell'
 import AuditLogs from './AuditLogs'
@@ -14,6 +14,7 @@ import AdminArchives from './AdminArchives'
 import DataExport from './DataExport'
 import SystemHealth from './SystemHealth'
 import RescuerMap from './RescuerMap'
+import AdminProfile from './Profile'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 
 const roleBadge = {
@@ -56,6 +57,7 @@ const tabLabels = {
   archive: 'Archives',
   exportData: 'Export',
   systemHealth: 'System Health',
+  profile: 'My Profile',
 }
 
 export default function Dashboard() {
@@ -71,7 +73,6 @@ export default function Dashboard() {
   const [chartPeriod, setChartPeriod] = useState('daily')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [updating, setUpdating] = useState(null)
   const [adminPermissions, setAdminPermissions] = useState(null)
 
   const fetchData = useCallback(async () => {
@@ -102,21 +103,6 @@ export default function Dashboard() {
     fetchData()
   }, [user, authLoading, navigate, fetchData])
 
-  async function handleRoleChange(uuid, newRole) {
-    try {
-      setUpdating(uuid)
-      await adminApi.updateUserRole(uuid, newRole)
-      const usersRes = await adminApi.getUsers()
-      setUsers(usersRes.users)
-      const statsRes = await adminApi.getStats()
-      setStats(statsRes.stats)
-    } catch (err) {
-      setError(err.message || 'Failed to update role')
-    } finally {
-      setUpdating(null)
-    }
-  }
-
   if (authLoading) return <LoadingScreen />
   if (loading && !users.length) {
     return <LoadingScreen />
@@ -143,6 +129,7 @@ export default function Dashboard() {
           onRefresh={fetchData}
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed((c) => !c)}
+          navigate={navigate}
         />
 
         <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-8">
@@ -172,8 +159,6 @@ export default function Dashboard() {
               <UsersTab
                 users={users}
                 currentUserUuid={user?.uuid}
-                updating={updating}
-                onRoleChange={handleRoleChange}
                 onRefresh={fetchData}
                 onCreateUser={fetchData}
               />
@@ -189,6 +174,7 @@ export default function Dashboard() {
             {activeTab === 'exportData' && <DataExport />}
             {activeTab === 'systemHealth' && <SystemHealth />}
   {activeTab === 'rescuerMap' && <RescuerMap />}
+            {activeTab === 'profile' && <AdminProfile />}
 </FadeIn>
         </div>
       </main>
@@ -431,7 +417,7 @@ function Sidebar({ collapsed, onToggle, activeTab, onTabChange, user, logout, na
   )
 }
 
-function TopBar({ title, user, onRefresh, sidebarCollapsed, onToggleSidebar }) {
+function TopBar({ title, user, onRefresh, sidebarCollapsed, onToggleSidebar, navigate }) {
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-6 shadow-sm">
       <button
@@ -462,9 +448,13 @@ function TopBar({ title, user, onRefresh, sidebarCollapsed, onToggleSidebar }) {
         </button>
 
         <div className="flex items-center gap-2.5 border-l border-gray-200 pl-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 text-xs font-bold text-white shadow-sm">
+          <button
+            onClick={() => navigate?.('/admin/dashboard/profile')}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 text-xs font-bold text-white shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2"
+            title="My Profile"
+          >
             {user?.firstName?.[0]}{user?.lastName?.[0]}
-          </div>
+          </button>
           <span className="hidden text-sm font-medium text-gray-700 sm:block">
             {user?.firstName} {user?.lastName}
           </span>
@@ -660,28 +650,20 @@ function DashboardTab({ stats, dashData, chartPeriod, onChartPeriodChange, userN
   )
 }
 
-function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, onCreateUser }) {
-  const [openDropdown, setOpenDropdown] = useState(null)
-  const [pendingRoleChange, setPendingRoleChange] = useState(null)
+function UsersTab({ users, currentUserUuid, onRefresh, onCreateUser }) {
+  const [passwordUser, setPasswordUser] = useState(null)
+  const [passwordValue, setPasswordValue] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [passwordUpdating, setPasswordUpdating] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({ firstName: '', lastName: '', email: '', phoneNumber: '', password: '' })
   const [createPhoneError, setCreatePhoneError] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
   const [createError, setCreateError] = useState('')
-  const [passwordUser, setPasswordUser] = useState(null)
-  const [passwordValue, setPasswordValue] = useState('')
-  const [passwordUpdating, setPasswordUpdating] = useState(false)
-  const [passwordError, setPasswordError] = useState('')
-
-  function handleRoleClick(uuid, role) {
-    setOpenDropdown(null)
-    setPendingRoleChange({ uuid, role })
-  }
-
-  const roles = [
-    { value: 'rescuer', label: 'Rescuer' },
-    { value: 'admin', label: 'Admin' },
-  ]
 
   async function handleCreateUser(e) {
     e.preventDefault()
@@ -752,8 +734,6 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
           <tbody className="divide-y divide-gray-100">
             {users.map((u) => {
               const isOwn = currentUserUuid === u.uuid
-              const isUpdating = updating === u.uuid
-              const isOpen = openDropdown === u.uuid
               return (
                 <tr key={u.uuid} className="transition-colors hover:bg-gray-50/50">
                   <td className="whitespace-nowrap px-6 py-4">
@@ -773,63 +753,14 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right">
                     <div className="relative flex items-center justify-end">
-                      {isUpdating && (
-                        <svg className="mr-2 h-4 w-4 animate-spin text-green-600" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      )}
                       <button
-                        disabled={isOwn || isUpdating}
-                        onClick={() => setOpenDropdown(isOpen ? null : u.uuid)}
-                        className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                        onClick={() => { setPasswordUser(u); setPasswordValue(''); setCurrentPassword(''); setPasswordError(''); setPasswordConfirmOpen(false) }}
+                        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium shadow-sm transition-all hover:bg-gray-50 active:scale-95 ${
+                          isOwn ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100' : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                        }`}
                       >
-                        {isOwn ? 'You' : 'Change Role'}
-                        <svg className={`h-3.5 w-3.5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                        {isOwn ? 'Change My Password' : 'Change Password'}
                       </button>
-                      {isOpen && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => setOpenDropdown(null)} />
-                          <div className="absolute right-0 top-full z-20 mt-1 w-44 origin-top-right rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                            {roles.map((r) => {
-                              const isActive = u.role === r.value
-                              return (
-                                <button
-                                  key={r.value}
-                                  disabled={isActive || isUpdating}
-                                  onClick={() => {
-                                    if (!isActive) handleRoleClick(u.uuid, r.value)
-                                  }}
-                                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                                    isActive
-                                      ? 'bg-green-50 font-medium text-green-700'
-                                      : 'text-gray-700 hover:bg-gray-50'
-                                  } disabled:cursor-not-allowed disabled:opacity-50`}
-                                >
-                                  {isActive && (
-                                    <svg className="h-3.5 w-3.5 shrink-0 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  )}
-                                  <span className={isActive ? '' : 'ml-5'}>{r.label}</span>
-                                </button>
-                              )
-                            })}
-                            <div className="border-t border-gray-100" />
-                            <button
-                              onClick={() => { setOpenDropdown(null); setPasswordUser(u); setPasswordValue(''); setPasswordError('') }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              <svg className="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m0 0l-9 9a.75.75 0 01-.53.22H6.75a.75.75 0 01-.75-.75v-2.47a.75.75 0 01.22-.53l9-9a3 3 0 013 3z" />
-                              </svg>
-                              Change Password
-                            </button>
-                          </div>
-                        </>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -844,38 +775,6 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
         </table>
       </div>
 
-      {pendingRoleChange && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-gray-900">Change User Role</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Are you sure you want to change this user's role to <strong>{pendingRoleChange.role}</strong>?
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setPendingRoleChange(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <DoubleConfirmation
-                onConfirm={() => {
-                  onRoleChange(pendingRoleChange.uuid, pendingRoleChange.role)
-                  setPendingRoleChange(null)
-                }}
-                title="Confirm Role Change"
-                message={`This will change the user's role to ${pendingRoleChange.role}. Are you sure?`}
-                confirmText={`Yes, Change to ${pendingRoleChange.role}`}
-              >
-                <button className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700">
-                  Confirm Change
-                </button>
-              </DoubleConfirmation>
-            </div>
-          </div>
-        </div>
-      )}
-
       {passwordUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
@@ -887,29 +786,63 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
               e.preventDefault()
               setPasswordError('')
               if (passwordValue.length < 8) { setPasswordError('Password must be at least 8 characters.'); return }
-              setPasswordUpdating(true)
-              try {
-                await adminApi.updatePassword(passwordUser.uuid, passwordValue)
-                setPasswordUser(null)
-                setPasswordValue('')
-              } catch (err) {
-                setPasswordError(err.message || 'Failed to update password.')
-              } finally { setPasswordUpdating(false) }
+              const isOwn = passwordUser.uuid === currentUserUuid
+              if (isOwn && !currentPassword) { setPasswordError('Current password is required.'); return }
+              setPasswordConfirmOpen(true)
             }} className="mt-4 space-y-4">
               {passwordError && (
                 <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{passwordError}</div>
               )}
+              {passwordUser.uuid === currentUserUuid && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                  <div className="relative mt-1">
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'} required
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                    />
+                    <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showCurrentPassword ? (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700">New Password</label>
-                <input
-                  type="password" required minLength={8}
-                  value={passwordValue}
-                  onChange={(e) => setPasswordValue(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                />
+                <div className="relative mt-1">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'} required minLength={8}
+                    value={passwordValue}
+                    onChange={(e) => setPasswordValue(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  />
+                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showNewPassword ? (
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="flex items-center justify-end gap-3 pt-1">
-                <button type="button" onClick={() => { setPasswordUser(null); setPasswordValue(''); setPasswordError('') }}
+                <button type="button" onClick={() => { setPasswordUser(null); setPasswordValue(''); setCurrentPassword(''); setPasswordError(''); setPasswordConfirmOpen(false) }}
                   className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
                   Cancel
                 </button>
@@ -919,6 +852,46 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh, o
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {passwordConfirmOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30">
+          <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Confirm Password Change</h3>
+            <p className="mt-2 text-sm text-gray-500">
+              Are you sure you want to change the password for <strong>{passwordUser.firstName} {passwordUser.lastName}</strong>?
+            </p>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setPasswordConfirmOpen(false)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setPasswordError('')
+                  setPasswordUpdating(true)
+                  setPasswordConfirmOpen(false)
+                  try {
+                    await adminApi.updatePassword(passwordUser.uuid, passwordValue, currentPassword || undefined)
+                    setPasswordUser(null)
+                    setPasswordValue('')
+                    setCurrentPassword('')
+                  } catch (err) {
+                    setPasswordError(err.message || 'Failed to update password.')
+                    setPasswordUpdating(false)
+                  } finally {
+                    setPasswordUpdating(false)
+                  }
+                }}
+                className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-800"
+              >
+                {passwordUpdating ? 'Saving...' : 'Confirm'}
+              </button>
+            </div>
           </div>
         </div>
       )}

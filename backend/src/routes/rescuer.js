@@ -21,7 +21,7 @@ const {
 const { upload, uploadImage } = require("../controllers/uploadController");
 const { getShifts, saveShifts } = require("../controllers/shiftController");
 const { getChecklist, saveChecklist } = require("../controllers/equipmentController");
-const { addVoiceNote, getVoiceNotes } = require("../controllers/voiceNoteController");
+
 
 router.use(authenticate);
 router.use(authorize("rescuer", "admin", "superadmin"));
@@ -37,7 +37,8 @@ router.get("/stats", asyncHandler(getStats));
 const profileRules = [
   body("firstName").optional().trim().isLength({ max: 50 }).matches(/^[a-zA-Z\s'-]+$/).withMessage("First name contains invalid characters."),
   body("lastName").optional().trim().isLength({ max: 50 }).matches(/^[a-zA-Z\s'-]+$/).withMessage("Last name contains invalid characters."),
-  body("phoneNumber").optional().trim().matches(/^\+?\d{7,15}$/).withMessage("Valid phone number is required (7-15 digits)."),
+  body("phoneNumber").trim().notEmpty().withMessage("Phone number is required.").matches(/^\+?\d{7,15}$/).withMessage("Valid phone number is required (7-15 digits)."),
+  body("email").optional().trim().isEmail().normalizeEmail().withMessage("Valid email is required."),
 ];
 router.patch("/profile", profileRules, validate, asyncHandler(updateProfile));
 router.get("/activity", asyncHandler(getActivity));
@@ -52,8 +53,6 @@ router.get("/shifts", asyncHandler(getShifts));
 router.post("/shifts", asyncHandler(saveShifts));
 router.get("/reports/:reportId/checklist", reportIdQuery, validate, asyncHandler(getChecklist));
 router.post("/reports/:reportId/checklist", reportIdQuery, validate, asyncHandler(saveChecklist));
-router.get("/reports/:reportId/voice-notes", reportIdQuery, validate, asyncHandler(getVoiceNotes));
-router.post("/voice-notes", asyncHandler(addVoiceNote));
 router.get("/locations", asyncHandler(async (_req, res) => {
   const convexClient = require("../config/convex");
   const { anyApi } = require("convex/server");

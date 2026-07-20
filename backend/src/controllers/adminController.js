@@ -278,7 +278,7 @@ const getStats = async (_req, res) => {
 
 const updatePassword = async (req, res) => {
   const { uuid } = req.params;
-  const { password } = req.body;
+  const { password, currentPassword } = req.body;
 
   if (!password || password.length < 8) {
     return res.status(400).json({ message: "Password must be at least 8 characters." });
@@ -287,6 +287,16 @@ const updatePassword = async (req, res) => {
   const user = await convexClient.query(anyApi.users.getUserByUuid, { uuid });
   if (!user) {
     return res.status(404).json({ message: "User not found." });
+  }
+
+  if (uuid === req.user.uuid) {
+    if (!currentPassword) {
+      return res.status(400).json({ message: "Current password is required to change your own password." });
+    }
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect." });
+    }
   }
 
   const salt = await bcrypt.genSalt(10);
@@ -299,4 +309,35 @@ const updatePassword = async (req, res) => {
   res.json({ message: "Password updated successfully." });
 };
 
-module.exports = { getUsers, getUser, updateUserRole, createUser, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport, updatePassword };
+const updateAdminProfile = async (req, res) => {
+  const { firstName, lastName, phoneNumber, email } = req.body;
+  const userId = req.user.uuid;
+
+  if (email) {
+    const existing = await convexClient.query(anyApi.users.getUserByEmail, { email: email.toLowerCase().trim() });
+    if (existing && existing.uuid !== userId) {
+      return res.status(409).json({ message: "Email is already in use by another account." });
+    }
+  }
+
+  await convexClient.mutation(anyApi.users.updateUser, {
+    uuid: userId,
+    firstName: firstName || undefined,
+    lastName: lastName || undefined,
+    phoneNumber: phoneNumber || undefined,
+    email: email ? email.toLowerCase().trim() : undefined,
+  });
+
+  await logEvent({
+    req,
+    userId,
+    eventType: "profile_update",
+    metadata: { firstName, lastName, phoneNumber, email },
+  });
+
+  const updated = await convexClient.query(anyApi.users.getUserByUuid, { uuid: userId });
+  const { password, ...safeUser } = updated;
+  res.json({ message: "Profile updated.", user: safeUser });
+};
+
+module.exports = { getUsers, getUser, updateUserRole, createUser, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport, updatePassword, updateAdminProfile };

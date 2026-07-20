@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLocationContext } from '../../context/LocationContext'
@@ -81,10 +81,6 @@ export default function RescuerAssignments() {
   const pageSize = 10
 
   const [checklists, setChecklists] = useState({})
-  const [voiceNotes, setVoiceNotes] = useState({})
-  const [recordingId, setRecordingId] = useState(null)
-  const [audioBlobs, setAudioBlobs] = useState({})
-  const mediaRecorderRef = useRef(null)
 
   const EQUIPMENT_ITEMS = [
     'First Aid Kit', 'Stretcher / Carrier', 'Capture Net', 'Gloves',
@@ -107,56 +103,6 @@ export default function RescuerAssignments() {
       rescuerApi.saveChecklist(reportId, items).catch(() => {})
       return { ...prev, [reportId]: items }
     })
-  }
-
-  async function loadVoiceNotes(reportId) {
-    if (voiceNotes[reportId] !== undefined) return
-    try {
-      const data = await rescuerApi.getVoiceNotes(reportId)
-      setVoiceNotes((prev) => ({ ...prev, [reportId]: data.notes || [] }))
-    } catch {}
-  }
-
-  async function startRecording(reportId) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mr = new MediaRecorder(stream)
-      const chunks = []
-      mr.ondataavailable = (e) => chunks.push(e.data)
-      mr.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' })
-        const url = URL.createObjectURL(blob)
-        setAudioBlobs((prev) => ({ ...prev, [reportId]: url }))
-        setRecordingId(null)
-        stream.getTracks().forEach((t) => t.stop())
-      }
-      mediaRecorderRef.current = mr
-      mr.start()
-      setRecordingId(reportId)
-    } catch { alert('Microphone access denied.') }
-  }
-
-  function stopRecording() {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-    }
-  }
-
-  async function submitVoiceNote(reportId) {
-    const blob = audioBlobs[reportId]
-    if (!blob) return
-    try {
-      const formData = new FormData()
-      formData.append('image', blob, `voice-${reportId}.webm`)
-      const res = await fetch('/api/v1/rescuer/upload', { method: 'POST', credentials: 'include', body: formData })
-      const data = await res.json()
-      if (data.url) {
-        await rescuerApi.addVoiceNote(reportId, data.url)
-        const notes = await rescuerApi.getVoiceNotes(reportId)
-        setVoiceNotes((prev) => ({ ...prev, [reportId]: notes.notes || [] }))
-        setAudioBlobs((prev) => { const copy = { ...prev }; delete copy[reportId]; return copy })
-      }
-    } catch { alert('Failed to upload voice note.') }
   }
 
   const fetchReports = useCallback(() => {
@@ -188,7 +134,6 @@ export default function RescuerAssignments() {
     if (match) {
       setSelectedReport(match)
       loadChecklist(reportId)
-      loadVoiceNotes(reportId)
       window.history.replaceState({}, document.title)
     }
   }, [location.state?.reportId, reports])
@@ -405,7 +350,7 @@ export default function RescuerAssignments() {
                     return (
                       <tr
                         key={r._id}
-                        onClick={() => { setSelectedReport(r); loadChecklist(r._id); loadVoiceNotes(r._id) }}
+                        onClick={() => { setSelectedReport(r); loadChecklist(r._id) }}
                         className="cursor-pointer transition-colors hover:bg-amber-50"
                       >
                         <td className="px-5 py-4">
@@ -455,7 +400,7 @@ export default function RescuerAssignments() {
                 return (
                   <div
                     key={r._id}
-                    onClick={() => { setSelectedReport(r); loadChecklist(r._id); loadVoiceNotes(r._id) }}
+                    onClick={() => { setSelectedReport(r); loadChecklist(r._id) }}
                     className="rounded-xl border-2 border-gray-200 bg-white p-4 cursor-pointer transition-colors hover:border-amber-300 active:bg-amber-50"
                   >
                     <div className="flex items-start gap-3">

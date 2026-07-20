@@ -43,6 +43,7 @@ const LANDING_DEFAULTS = {
   contact: {
     emergencyHotline: "+63 (48) 123-4567",
     phone: "+63 (48) 434-1234",
+    telephone: "",
     email: "rescue@palawanwildlife.org",
     address: "Irawan, Puerto Princesa City, Palawan 5300, Philippines",
     hours: "Monday – Sunday, 8:00 AM – 5:00 PM",

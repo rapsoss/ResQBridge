@@ -258,21 +258,29 @@ const getStats = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-  const { firstName, lastName, phoneNumber } = req.body;
+  const { firstName, lastName, phoneNumber, email } = req.body;
   const userId = req.user.uuid;
+
+  if (email) {
+    const existing = await convexClient.query(anyApi.users.getUserByEmail, { email: email.toLowerCase().trim() });
+    if (existing && existing.uuid !== userId) {
+      return res.status(409).json({ message: "Email is already in use by another account." });
+    }
+  }
 
   await convexClient.mutation(anyApi.users.updateUser, {
     uuid: userId,
     firstName: firstName || undefined,
     lastName: lastName || undefined,
     phoneNumber: phoneNumber || undefined,
+    email: email ? email.toLowerCase().trim() : undefined,
   });
 
   await logEvent({
     req,
     userId,
     eventType: "profile_update",
-    metadata: { firstName, lastName, phoneNumber },
+    metadata: { firstName, lastName, phoneNumber, email },
   });
 
   await logActivity(userId, "profile_update", `Updated profile${firstName ? ` (first name: ${firstName})` : ''}${lastName ? ` (last name: ${lastName})` : ''}`);

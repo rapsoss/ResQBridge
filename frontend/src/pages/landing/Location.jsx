@@ -12,7 +12,7 @@ import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl })
 
-export default function Location({ title, subtitle, center }) {
+export default function Location({ title, subtitle, center, contact }) {
   const { userPos, locError, distance, routePath, routeInfo, routeLoading, requestLocation, fetchRoute } = useLocationContext()
   const [showDirections, setShowDirections] = useState(false)
 
@@ -45,11 +45,11 @@ export default function Location({ title, subtitle, center }) {
 
               <div className="mt-6 space-y-5 text-sm">
                 <InfoItem label="Address">
-                  <p className="text-gray-500">Irawan, Puerto Princesa City<br />Palawan 5300, Philippines</p>
+                  <p className="text-gray-500">{contact?.address}</p>
                 </InfoItem>
 
                 <InfoItem label="Operating Hours">
-                  <p className="text-gray-500">Monday – Sunday<br />8:00 AM – 5:00 PM</p>
+                  <p className="text-gray-500">{contact?.hours}</p>
                   <span
                     className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                       isOpen()
@@ -63,7 +63,11 @@ export default function Location({ title, subtitle, center }) {
                 </InfoItem>
 
                 <InfoItem label="Contact">
-                  <p className="text-gray-500">+63 (48) 434-1234<br />rescue@palawanwildlife.org</p>
+                  <p className="text-gray-500">{contact?.phone}</p>
+                </InfoItem>
+
+                <InfoItem label="Email">
+                  <p className="text-gray-500">{contact?.email}</p>
                 </InfoItem>
 
                 <InfoItem label="In-Kind Donations">

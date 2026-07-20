@@ -18,7 +18,7 @@ import LandingSkeleton from './LandingSkeleton'
 import Maintenance from './Maintenance'
 import EmergencyBanner from './EmergencyBanner'
 import TrustSection from './TrustSection'
-import NewsletterSection from './NewsletterSection'
+
 import BlogPreview from './BlogPreview'
 import EmergencyFloatingButton from './EmergencyFloatingButton'
 import AccessibilityBar from './AccessibilityBar'
@@ -124,7 +124,7 @@ export default function Landing() {
           </SectionTracker>
 
           <SectionTracker name="location">
-            <Location title={cfg.location.title} subtitle={cfg.location.subtitle} center={cfg.location.center} />
+            <Location title={cfg.location.title} subtitle={cfg.location.subtitle} center={cfg.location.center} contact={cfg.contact} />
           </SectionTracker>
           <SectionTracker name="news-events">
             <NewsEvents title={cfg.newsEvents.title} subtitle={cfg.newsEvents.subtitle} news={cfg.newsEvents.news} events={cfg.newsEvents.events} />
@@ -136,9 +136,6 @@ export default function Landing() {
             <FAQSection faq={cfg.faq} />
           </SectionTracker>
 
-          <SectionTracker name="newsletter">
-            <NewsletterSection />
-          </SectionTracker>
           <SectionTracker name="contact">
             <ContactSection contact={cfg.contact} />
           </SectionTracker>

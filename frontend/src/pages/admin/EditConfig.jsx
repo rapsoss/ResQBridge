@@ -45,7 +45,7 @@ export default function EditConfig({ section }) {
       partners: { title: '', subtitle: '', partners: [] },
     }
     const nested = {
-      contact: { social: { facebook: '', instagram: '', twitter: '' } },
+      contact: { social: { facebook: '', instagram: '', twitter: '', tiktok: '' } },
     }
     for (const [key, defaults] of Object.entries(sections)) {
       if (!cfg[key]) { cfg[key] = structuredClone(defaults); continue }
@@ -768,18 +768,18 @@ export default function EditConfig({ section }) {
           <h2 className="text-lg font-semibold text-gray-900">Contact Info</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Emergency Hotline</label>
-              <input
-                value={config.contact.emergencyHotline}
-                onChange={(e) => update('contact.emergencyHotline', e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-              />
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-700">Phone</label>
               <input
                 value={config.contact.phone}
                 onChange={(e) => update('contact.phone', e.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Telephone</label>
+              <input
+                value={config.contact.telephone}
+                onChange={(e) => update('contact.telephone', e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
               />
             </div>
@@ -821,6 +821,10 @@ export default function EditConfig({ section }) {
                 <div>
                   <label className="block text-xs text-gray-500">Twitter</label>
                   <input value={config.contact?.social?.twitter || ''} onChange={(e) => update('contact.social.twitter', e.target.value)} placeholder="https://twitter.com/..." className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500">TikTok</label>
+                  <input value={config.contact?.social?.tiktok || ''} onChange={(e) => update('contact.social.tiktok', e.target.value)} placeholder="https://tiktok.com/..." className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" />
                 </div>
               </div>
             </div>
@@ -1016,18 +1020,7 @@ export default function EditConfig({ section }) {
                         className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
                       />
                     </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">Icon (SVG path)</label>
-                      <input
-                        value={step.icon}
-                        onChange={(e) => {
-                          setConfig((prev) => { const c = structuredClone(prev); c.howItWorks.steps[i].icon = e.target.value; return c })
-                          setDirty(true)
-                        }}
-                        placeholder="SVG path (stroke d attribute)"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono text-xs outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-                      />
-                    </div>
+
                   </div>
                 </div>
               ))}

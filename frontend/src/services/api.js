@@ -81,10 +81,10 @@ export const admin = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  updatePassword: (uuid, password) =>
+  updatePassword: (uuid, password, currentPassword) =>
     request(`/admin/users/${uuid}/password`, {
       method: 'PATCH',
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ password, ...(currentPassword ? { currentPassword } : {}) }),
     }),
   getStats: () => request('/admin/stats'),
 
@@ -158,6 +158,11 @@ export const admin = {
       method: 'PUT',
       body: JSON.stringify(permissions),
     }),
+  updateProfile: (body) =>
+    request('/admin/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
 }
 
 export const rescuer = {
@@ -214,13 +219,6 @@ export const rescuer = {
     request(`/rescuer/reports/${reportId}/checklist`, {
       method: 'POST',
       body: JSON.stringify({ items }),
-    }),
-
-  getVoiceNotes: (reportId) => request(`/rescuer/reports/${reportId}/voice-notes`),
-  addVoiceNote: (reportId, audioUrl, duration) =>
-    request('/rescuer/voice-notes', {
-      method: 'POST',
-      body: JSON.stringify({ reportId, audioUrl, duration }),
     }),
 
   getNotifications: () => request('/rescuer/notifications'),

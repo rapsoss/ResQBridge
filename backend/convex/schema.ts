@@ -176,13 +176,4 @@ export default defineSchema({
   })
     .index("by_reportId", ["reportId"]),
 
-  voiceNotes: defineTable({
-    reportId: v.string(),
-    userId: v.string(),
-    userName: v.string(),
-    audioUrl: v.string(),
-    duration: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_reportId", ["reportId"]),
 });
