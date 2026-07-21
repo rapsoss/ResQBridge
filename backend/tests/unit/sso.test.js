@@ -48,7 +48,7 @@ describe("SSO configuration", () => {
     expect(redirectUrl).toContain("login?sso=success");
   });
 
-  it("ssoCallback redirects to register for new users", async () => {
+  it("ssoCallback redirects to login for new users", async () => {
     const { ssoCallback } = await import("../../src/controllers/ssoController.js");
 
     let redirectUrl;
@@ -70,7 +70,7 @@ describe("SSO configuration", () => {
 
     ssoCallback(req, res);
 
-    expect(redirectUrl).toContain("register?sso=success");
+    expect(redirectUrl).toContain("login?sso=success");
   });
 
   it("ssoCallback redirects to login on failure when no user", async () => {

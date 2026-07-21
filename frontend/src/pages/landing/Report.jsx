@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, DoubleConfirmation, InfoPopover, HoneypotField } from '../../components/ui'
+import { Button, Modal, InfoPopover, HoneypotField } from '../../components/ui'
 import ReportSkeleton from './ReportSkeleton'
 import fallbackSpecies from '../../data/wildlifeSpecies'
 import L from 'leaflet'
@@ -49,7 +49,7 @@ function MapCentered({ form, locateTrigger }) {
   const map = useMap()
   useEffect(() => {
     if (position) map.setView(position, 16)
-  }, [map, position, locateTrigger])
+  }, [map, locateTrigger])
 
   return null
 }
@@ -65,12 +65,14 @@ const REPORT_INFO = {
 export default function Report() {
   const navigate = useNavigate()
   const fileRef = useRef(null)
+  const cameraRef = useRef(null)
   const [form, setForm] = useState({
     name: '',
     phone: '',
     category: '',
     animalType: '',
     wildlifeCondition: '',
+    quantity: '',
     location: '',
     description: '',
     latitude: '',
@@ -86,6 +88,7 @@ export default function Report() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [phoneError, setPhoneError] = useState('')
   const [gettingLocation, setGettingLocation] = useState(false)
   const [locateTrigger, setLocateTrigger] = useState(0)
   const [speciesOpen, setSpeciesOpen] = useState(false)
@@ -96,6 +99,23 @@ export default function Report() {
   const [selectedSpecies, setSelectedSpecies] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [lightbox, setLightbox] = useState(null)
+  const [tosAccepted, setTosAccepted] = useState(false)
+  const [showTosModal, setShowTosModal] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [tosScrolledToBottom, setTosScrolledToBottom] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
+  const tosContentRef = useRef(null)
+  useEffect(() => {
+    if (form.latitude && form.longitude) {
+      setFieldErrors((prev) => ({ ...prev, gps: '' }))
+    }
+  }, [form.latitude, form.longitude])
+  useEffect(() => {
+    if (showTosModal) {
+      document.body.style.overflow = 'hidden'
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [showTosModal])
   useEffect(() => {
     fetch(`${API_BASE}/landing-config`)
       .then((r) => r.json())
@@ -118,15 +138,42 @@ export default function Report() {
     if (speciesOpen) searchRef.current?.focus()
   }, [speciesOpen])
   function update(field) {
-    return (e) => setForm({ ...form, [field]: e.target.value })
+    return (e) => {
+      setForm({ ...form, [field]: e.target.value })
+      setFieldErrors((prev) => ({ ...prev, [field]: '' }))
+    }
   }
 
-  function handleImages(e) {
+  function compressImage(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let w = img.width, h = img.height
+          const max = 1080
+          if (w > max) { h = h * (max / w); w = max }
+          if (h > max) { w = w * (max / h); h = max }
+          canvas.width = w; canvas.height = h
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, w, h)
+          canvas.toBlob((blob) => resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.7)
+        }
+        img.src = e.target.result
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function handleImages(e) {
     const files = Array.from(e.target.files || [])
     const remaining = 5 - imageFiles.length
     const selected = files.slice(0, remaining)
-    setImageFiles((prev) => [...prev, ...selected])
+    const compressed = await Promise.all(selected.map(compressImage))
+    setImageFiles((prev) => [...prev, ...compressed])
     setImagePreviews((prev) => [...prev, ...selected.map((f) => URL.createObjectURL(f))])
+    setFieldErrors((prev) => ({ ...prev, images: '' }))
   }
 
   function removeImage(index) {
@@ -158,9 +205,75 @@ export default function Report() {
     )
   }
 
+  function validateRequiredFields() {
+    const errors = {}
+    if (!form.phone || form.phone.length !== 10 || form.phone[0] !== '9') errors.phone = true
+    if (!form.category) errors.category = true
+    if (!form.animalType) errors.animalType = true
+    if (!form.wildlifeCondition) errors.wildlifeCondition = true
+    if (!form.location) errors.location = true
+    if (!form.latitude || !form.longitude) errors.gps = true
+    if (!form.description) errors.description = true
+    if (!form.quantity) errors.quantity = true
+    if (imageFiles.length === 0) errors.images = true
+    return errors
+  }
+
+  const FIELD_IDS = { phone: 'field-phone', category: 'field-category', animalType: 'field-animalType', wildlifeCondition: 'field-wildlifeCondition', quantity: 'field-quantity', location: 'field-location', gps: 'field-gps', description: 'field-description', images: 'field-images' }
+
+  function scrollToField(id) {
+    const el = document.getElementById(id)
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY - 120
+      window.scrollTo({ top, behavior: 'smooth' })
+    }
+  }
+
+  function handlePreSubmit() {
+    const errors = validateRequiredFields()
+    setFieldErrors(errors)
+    const keys = Object.keys(errors)
+    if (keys.length > 0) {
+      setError('Please fill in all required fields.')
+      scrollToField(FIELD_IDS[keys[0]])
+      return
+    }
+
+    if (!tosAccepted) {
+      setShowTosModal(true)
+      setTosScrolledToBottom(false)
+    } else {
+      setShowConfirmModal(true)
+    }
+  }
+
+  function handleTosScroll() {
+    const el = tosContentRef.current
+    if (el) {
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 5) {
+        setTosScrolledToBottom(true)
+      }
+    }
+  }
+
+  async function doSubmit() {
+    setShowConfirmModal(false)
+    await handleSubmit()
+  }
+
   async function handleSubmit(e) {
     if (e) e.preventDefault()
     setError('')
+    setPhoneError('')
+    const phone = form.phone
+    if (!phone || phone.length !== 10) {
+      setError('Contact phone must be exactly 10 digits.')
+      return
+    }
+    if (phone[0] !== '9') {
+      setError('Contact phone must start with 9.')
+      return
+    }
     if (imageFiles.length === 0) {
       setError('Please upload at least one supporting photo.')
       return
@@ -173,6 +286,7 @@ export default function Report() {
       fd.append('category', form.category)
       fd.append('animalType', form.animalType)
       fd.append('wildlifeCondition', form.wildlifeCondition)
+      fd.append('quantity', form.quantity)
       fd.append('location', form.location)
       fd.append('description', form.description)
       fd.append('latitude', form.latitude)
@@ -183,8 +297,12 @@ export default function Report() {
         method: 'POST',
         body: fd,
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to submit report.')
+      const body = await res.text()
+      if (!res.ok) {
+        let msg
+        try { msg = JSON.parse(body).message } catch { msg = body || `Server returned ${res.status}` }
+        throw new Error(msg)
+      }
       setSubmitted(true)
     } catch (err) {
       setError(err.message)
@@ -210,7 +328,7 @@ export default function Report() {
           </p>
           <div className="mt-8 flex justify-center gap-3">
             <Button onClick={() => navigate('/')}>Back to Home</Button>
-            <Button variant="outline" onClick={() => { setSubmitted(false); setForm({ name: '', phone: '', category: '', animalType: '', wildlifeCondition: '', location: '', description: '', latitude: '', longitude: '' }); setSelectedSpecies(null); setImageFiles([]); setImagePreviews([]); if (fileRef.current) fileRef.current.value = '' }}>
+            <Button variant="outline" onClick={() => { setSubmitted(false); setForm({ name: '', phone: '', category: '', animalType: '', wildlifeCondition: '', quantity: '', location: '', description: '', latitude: '', longitude: '' }); setSelectedSpecies(null); setImageFiles([]); setImagePreviews([]); if (fileRef.current) fileRef.current.value = '' }}>
               Submit Another
             </Button>
               </div>
@@ -230,7 +348,7 @@ export default function Report() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-gray-200 bg-white px-8 py-10 shadow-sm">
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-6 rounded-2xl border border-gray-200 bg-white px-8 py-10 shadow-sm">
           <HoneypotField />
           {error && (
             <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
@@ -251,7 +369,7 @@ export default function Report() {
               <label className="block text-sm font-medium text-gray-700">
                 Contact Phone <InfoPopover>Your contact number will only be used by authorized personnel to verify your report and coordinate the appropriate response.</InfoPopover>
               </label>
-              <div className="mt-1.5 flex">
+              <div className="mt-1.5 flex" id="field-phone">
                 <span className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 px-3 text-sm text-gray-600">+63</span>
                 <input
                   type="tel"
@@ -262,12 +380,28 @@ export default function Report() {
                     const text = (e.clipboardData || window.clipboardData).getData('text')
                     if (text && /\D/.test(text)) e.preventDefault()
                   }}
-                  onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
-                  className="block w-full rounded-r-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                    setForm((prev) => ({ ...prev, phone: val }))
+                    setFieldErrors((prev) => ({ ...prev, phone: '' }))
+                    if (val.length > 0 && val[0] !== '9') {
+                      setPhoneError('Number must start with 9')
+                    } else if (val.length > 0 && val.length < 10) {
+                      setPhoneError('Number must be exactly 10 digits')
+                    } else {
+                      setPhoneError('')
+                    }
+                  }}
+                  className={`block w-full rounded-r-lg border px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-2 ${
+                    fieldErrors.phone
+                      ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                  }`}
                   placeholder="9XX XXX XXXX"
                   required
                 />
               </div>
+              {phoneError && <p className="mt-1 text-xs text-red-500">{phoneError}</p>}
             </div>
           </div>
 
@@ -283,12 +417,20 @@ export default function Report() {
                 </InfoPopover>}
               </label>
               <select
+                id="field-category"
                 value={form.category}
-                onChange={update('category')}
-                className="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                onChange={(e) => {
+                  setForm({ ...form, category: e.target.value })
+                  setFieldErrors((prev) => ({ ...prev, category: '' }))
+                }}
+                className={`mt-1.5 w-full rounded-lg border px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-2 ${
+                  fieldErrors.category
+                    ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
+                    : 'border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                }`}
                 required
               >
-                <option value="">Select report type</option>
+                <option value="" disabled className="text-gray-400">Select report type</option>
               <option value="wildlife_sighting">Wildlife Sighting</option>
               <option value="illegal_possession">Illegal Wildlife Possession</option>
                 <option value="human_wildlife_conflict">Human–Wildlife Conflict</option>
@@ -301,12 +443,16 @@ export default function Report() {
                   <p className="mt-1 text-gray-300">Search and select the wildlife species from the Wildlife Guide. The list is automatically loaded from the Wildlife Guide database. If you are unable to identify the species, select Unknown Species.</p>
                 </InfoPopover>
               </label>
-              <div className="relative mt-1.5" ref={speciesRef}>
+              <div className="relative mt-1.5" ref={speciesRef} id="field-animalType">
                 <input type="hidden" name="animalType" value={form.animalType} required />
                 <button
                   type="button"
-                  onClick={() => { setSpeciesOpen((o) => !o); if (!speciesOpen) { setSpeciesQuery('') } }}
-                  className="flex w-full items-center justify-between rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                  onClick={() => { setSpeciesOpen((o) => !o); if (!speciesOpen) { setSpeciesQuery(''); setFieldErrors((prev) => ({ ...prev, animalType: '' })) } }}
+                  className={`flex w-full items-center justify-between rounded-lg border px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-2 ${
+                    fieldErrors.animalType
+                      ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                  }`}
                 >
                   <span className={form.animalType ? '' : 'text-gray-400'}>{form.animalType || 'Select species'}</span>
                   <svg className={`h-4 w-4 text-gray-400 transition ${speciesOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
@@ -328,7 +474,7 @@ export default function Report() {
                         <button
                           key={s.name}
                           type="button"
-                          onMouseDown={() => { setForm((prev) => ({ ...prev, animalType: s.name })); setSelectedSpecies(s); setSpeciesQuery(''); setSpeciesOpen(false) }}
+                          onMouseDown={() => { setForm((prev) => ({ ...prev, animalType: s.name })); setSelectedSpecies(s); setSpeciesQuery(''); setSpeciesOpen(false); setFieldErrors((prev) => ({ ...prev, animalType: '' })) }}
                           className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-green-50"
                         >
                           {s.images?.[0] && (
@@ -339,7 +485,7 @@ export default function Report() {
                       ))}
                       <button
                         type="button"
-                        onMouseDown={() => { setForm((prev) => ({ ...prev, animalType: 'Unknown Species' })); setSelectedSpecies(null); setSpeciesQuery(''); setSpeciesOpen(false) }}
+                        onMouseDown={() => { setForm((prev) => ({ ...prev, animalType: 'Unknown Species' })); setSelectedSpecies(null); setSpeciesQuery(''); setSpeciesOpen(false); setFieldErrors((prev) => ({ ...prev, animalType: '' })) }}
                         className="flex w-full items-center gap-2 border-t border-gray-100 px-4 py-2.5 text-left text-sm text-gray-500 italic hover:bg-green-50"
                       >
                         Unknown Species
@@ -353,13 +499,13 @@ export default function Report() {
 
           {selectedSpecies && (
             <div>
-              <p className="mb-1.5 text-xs text-gray-400">Click the animal to confirm if that is the animal you are reporting.</p>
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+              <p className="mb-1.5 text-xs text-gray-400">Click the card to confirm if that is the animal you are reporting.</p>
+              <button type="button" onClick={() => selectedSpecies.images?.[0] ? setPreviewUrl(selectedSpecies.images[0]) : null} className="w-full rounded-xl border border-green-200 bg-green-50 p-4 text-left transition-colors hover:bg-green-100">
               <div className="flex gap-4">
                 {selectedSpecies.images?.[0] ? (
-                  <button type="button" onClick={() => setPreviewUrl(selectedSpecies.images[0])} className="h-20 w-20 shrink-0 overflow-hidden rounded-lg">
-                    <img src={selectedSpecies.images[0]} alt={selectedSpecies.name} className="h-full w-full cursor-pointer object-cover transition-opacity hover:opacity-80" />
-                  </button>
+                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg">
+                    <img src={selectedSpecies.images[0]} alt={selectedSpecies.name} className="h-full w-full object-cover" />
+                  </div>
                 ) : (
                   <div className="h-20 w-20 shrink-0 rounded-lg bg-gradient-to-br from-green-100 to-emerald-50" />
                 )}
@@ -383,21 +529,54 @@ export default function Report() {
               {selectedSpecies.note && (
                 <p className="mt-2 text-xs leading-relaxed text-gray-500">{selectedSpecies.note}</p>
               )}
-            </div>
+            </button>
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Wildlife Condition <InfoPopover>
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Number of Animals
+          </label>
+          <input
+            id="field-quantity"
+            type="number"
+            min="1"
+            value={form.quantity}
+            onChange={(e) => {
+              const val = e.target.value
+              setForm({ ...form, quantity: val === '' ? '' : Math.max(1, parseInt(val) || 1).toString() })
+              setFieldErrors((prev) => ({ ...prev, quantity: '' }))
+            }}
+            placeholder="Enter number of animals"
+            className={`mt-1.5 w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2 ${
+              !form.quantity ? 'text-gray-400' : 'text-gray-900'
+            } ${
+              fieldErrors.quantity
+                ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
+                : 'border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+            }`}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Wildlife Condition <InfoPopover>
                 <p className="font-semibold">Wildlife Condition</p>
                 <p className="mt-1 text-gray-300">Select the condition that best describes the wildlife at the time of reporting. This helps responders assess the urgency and determine the appropriate response.</p>
               </InfoPopover>
             </label>
             <select
+              id="field-wildlifeCondition"
               value={form.wildlifeCondition}
-              onChange={update('wildlifeCondition')}
-              className="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+              onChange={(e) => {
+                setForm({ ...form, wildlifeCondition: e.target.value })
+                setFieldErrors((prev) => ({ ...prev, wildlifeCondition: '' }))
+              }}
+              className={`mt-1.5 w-full rounded-lg border px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-2 ${
+                fieldErrors.wildlifeCondition
+                  ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
+                  : 'border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+              }`}
               required
             >
               <option value="">Select condition</option>
@@ -408,6 +587,7 @@ export default function Report() {
               <option value="Unknown">Unknown</option>
             </select>
           </div>
+        </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -417,11 +597,20 @@ export default function Report() {
               </InfoPopover>
             </label>
             <input
+              id="field-location"
               type="text"
               value={form.location}
-              onChange={update('location')}
-              className="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+              onChange={(e) => {
+                setForm({ ...form, location: e.target.value })
+                setFieldErrors((prev) => ({ ...prev, location: '' }))
+              }}
+              className={`mt-1.5 w-full rounded-lg border px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-2 ${
+                fieldErrors.location
+                  ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
+                  : 'border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+              }`}
               placeholder="Near Barangay Hall, beside the elementary school."
+              required
             />
           </div>
 
@@ -432,19 +621,19 @@ export default function Report() {
                 <p className="mt-1 text-gray-300">Your current GPS location is required to help responders accurately locate the reported wildlife. After retrieving your location, verify the marker on the map and adjust it if necessary before submitting your report.</p>
               </InfoPopover>
             </label>
-            <div className="mt-1.5 space-y-3">
+            <div className={`mt-1.5 space-y-3 ${fieldErrors.gps ? 'rounded-lg border border-red-400 p-3' : ''}`} id="field-gps">
               <input type="hidden" name="latitude" value={form.latitude} required />
               <input type="hidden" name="longitude" value={form.longitude} required />
               <button
                 type="button"
                 onClick={getLocation}
                 disabled={gettingLocation}
-                className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-600 transition hover:border-green-500 hover:text-green-600 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 transition hover:border-green-500 hover:text-green-600 disabled:opacity-50"
               >
                 {gettingLocation ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
                 ) : (
-                  <span className="text-base">📍</span>
+                  <span className="text-xs">📍</span>
                 )}
                 {gettingLocation ? 'Getting location...' : 'Get Current Location'}
               </button>
@@ -480,10 +669,18 @@ export default function Report() {
               </InfoPopover>
             </label>
             <textarea
+              id="field-description"
               rows={4}
               value={form.description}
-              onChange={update('description')}
-              className="mt-1.5 w-full resize-y rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-green-500 focus:ring-1 focus:ring-green-500"
+              onChange={(e) => {
+                setForm({ ...form, description: e.target.value })
+                setFieldErrors((prev) => ({ ...prev, description: '' }))
+              }}
+              className={`mt-1.5 w-full resize-y rounded-lg border px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-2 ${
+                fieldErrors.description
+                  ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
+                  : 'border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+              }`}
               placeholder="Briefly describe what happened, including the wildlife's condition, behavior, surroundings, or any important details."
               required
             />
@@ -497,8 +694,9 @@ export default function Report() {
               </InfoPopover>
             </label>
             <p className="mt-1 text-xs text-gray-400">You can add up to 5 photos.</p>
-            <div className="mt-1.5">
-              <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp" multiple capture="environment" onChange={handleImages} className="hidden" />
+            <div className={`mt-1.5 ${fieldErrors.images ? 'rounded-lg border border-red-400 p-3' : ''}`} id="field-images">
+              <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={handleImages} className="hidden" />
+              <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImages} className="hidden" />
               {imagePreviews.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-3">
                   {imagePreviews.map((src, i) => (
@@ -516,33 +714,129 @@ export default function Report() {
                 </div>
               )}
               {imageFiles.length < 5 && (
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 transition hover:border-green-500 hover:text-green-600"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                  </svg>
-                  {imageFiles.length === 0 ? 'Add Photos' : 'Add More'}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => cameraRef.current?.click()}
+                    className="flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 transition hover:border-green-500 hover:text-green-600"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                    </svg>
+                    Take Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 transition hover:border-green-500 hover:text-green-600"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                    </svg>
+                    Choose from Gallery
+                  </button>
+                </div>
               )}
             </div>
           </div>
 
-          <DoubleConfirmation
-            onConfirm={handleSubmit}
-            title="Submit Animal Report"
-            message="Are you sure you want to submit this animal rescue report? It will be sent to rescue teams for response."
-            confirmText="Yes, Submit Report"
-            triggerVariant="primary"
+          <Button
+            type="button"
+            onClick={handlePreSubmit}
+            isLoading={submitting}
+            size="lg"
+            className="w-full"
           >
-            <Button type="button" isLoading={submitting} size="lg" className="w-full">
-              {submitting ? 'Submitting...' : 'Submit Report'}
-            </Button>
-          </DoubleConfirmation>
+            {submitting ? 'Submitting...' : 'Submit Report'}
+          </Button>
         </form>
       </div>
+
+      {showTosModal && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowTosModal(false)} aria-hidden="true" />
+          <div className="relative w-full max-w-2xl rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">Terms of Service</h2>
+              <button
+                onClick={() => setShowTosModal(false)}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                aria-label="Close modal"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div
+              ref={tosContentRef}
+              onScroll={handleTosScroll}
+              className="max-h-[50vh] overflow-y-auto px-6 py-4 space-y-4 text-sm leading-relaxed text-gray-600"
+            >
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-sm text-amber-800">
+                Please read the terms carefully and scroll to the bottom before you can agree.
+              </div>
+              <p>By submitting a report through ResQBridge, you agree to the following terms:</p>
+              <h4 className="font-medium text-gray-900">1. Accuracy of Information</h4>
+              <p>You confirm that all information provided in this report is accurate and truthful to the best of your knowledge.</p>
+              <h4 className="font-medium text-gray-900">2. Use of Service</h4>
+              <p>ResQBridge connects users with wildlife rescue teams. The platform is provided as-is for informational and emergency coordination purposes. You are responsible for ensuring that all information you provide is accurate and truthful.</p>
+              <h4 className="font-medium text-gray-900">3. User Conduct</h4>
+              <p>You agree not to submit false reports, misuse emergency channels, or upload harmful content.</p>
+              <h4 className="font-medium text-gray-900">4. Data Privacy Consent</h4>
+              <p>By providing your information, you consent to the collection and processing of your personal data. This is in compliance with the Data Privacy Act of 2012 (Republic Act No. 10173).</p>
+              <h4 className="font-medium text-gray-900">5. Purpose and Use of Data</h4>
+              <p>The personal data you provide, including contact information, location, and uploaded photos, will be used solely for wildlife rescue coordination, emergency response, and reporting purposes. Your data will not be used for any purpose beyond the core mission of ResQBridge without your explicit consent.</p>
+              <h4 className="font-medium text-gray-900">6. Limitation of Liability</h4>
+              <p>ResQBridge is not liable for any damages arising from the use or inability to use the platform, including delayed emergency responses caused by network or system failures.</p>
+              <h4 className="font-medium text-gray-900">7. Changes</h4>
+              <p>We reserve the right to update these terms at any time. Last updated: July 20, 2026.</p>
+              {!tosScrolledToBottom && (
+                <p className="sticky bottom-0 text-center text-xs text-gray-400 bg-white py-2">
+                  Scroll down to read the full terms
+                </p>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
+              <Button variant="outline" onClick={() => setShowTosModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!tosScrolledToBottom}
+                onClick={() => {
+                  setTosAccepted(true)
+                  setShowTosModal(false)
+                  setShowConfirmModal(true)
+                }}
+              >
+                I Agree
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        title="Submit Animal Report"
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={doSubmit}>
+              Yes, Submit Report
+            </Button>
+          </>
+        }
+      >
+        <p className="text-gray-600">
+          Are you sure you want to submit this animal rescue report? It will be sent to rescue teams for response.
+        </p>
+      </Modal>
 
       {previewUrl && selectedSpecies && (
         <div

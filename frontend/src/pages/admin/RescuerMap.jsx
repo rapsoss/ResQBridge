@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { GoogleMap, Marker, InfoWindow, useLoadScript } from '@react-google-maps/api'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { GoogleMap, Marker, InfoWindow, Polyline, useLoadScript } from '@react-google-maps/api'
 import { admin as adminApi } from '../../services/api'
 
 const MAP_STYLE = { width: '100%', height: '100%', borderRadius: '0.75rem' }
@@ -10,7 +10,7 @@ const STATUS_LABEL = {
   en_route: 'En Route',
   in_progress: 'In Progress',
   transport_to_pwrccc: 'Transport to PWRCCC',
-  resolved: 'Resolved',
+  resolved: 'Successful',
   failed: 'Failed',
 }
 
@@ -27,8 +27,10 @@ const STATUS_COLOR = {
 function activeAgo(updatedAt) {
   const age = Date.now() - new Date(updatedAt).getTime()
   if (age < 60000) return { label: 'Active now', online: true }
-  if (age < 300000) return { label: `${Math.floor(age / 60000)}m ago`, online: false }
-  return { label: `${Math.floor(age / 3600000)}h ago`, online: false }
+  if (age < 3600000) return { label: `${Math.floor(age / 60000)}m ago`, online: false }
+  if (age < 86400000) return { label: `${Math.floor(age / 3600000)}h ago`, online: false }
+  const days = Math.floor(age / 86400000)
+  return { label: `${days} day${days > 1 ? 's' : ''} ago`, online: false }
 }
 
 export default function RescuerMap() {
@@ -39,6 +41,11 @@ export default function RescuerMap() {
   const [assignments, setAssignments] = useState([])
   const [assignLoading, setAssignLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const [trackingReport, setTrackingReport] = useState(null)
+  const [routePath, setRoutePath] = useState([])
+  const [routeInfo, setRouteInfo] = useState(null)
+  const [loadingRoute, setLoadingRoute] = useState(false)
+  const mapRef = useRef(null)
 
   const { isLoaded, loadError } = useLoadScript({ googleMapsApiKey: apiKey })
   const mapsFailed = loadError || (isLoaded && !window.google?.maps?.version)
@@ -61,7 +68,7 @@ export default function RescuerMap() {
     setAssignLoading(true)
     try {
       const data = await adminApi.getRescuerReports(rescuer.userId)
-      setAssignments(data.reports || [])
+      setAssignments((data.reports || []).filter((r) => r.status === 'en_route'))
     } catch {
       setAssignments([])
     } finally {
@@ -78,13 +85,71 @@ export default function RescuerMap() {
   }, [selectedRescuer, fetchAssignments])
 
   const handleSelect = useCallback((loc) => {
-    setSelectedRescuer((prev) => (prev?.userId === loc.userId ? null : loc))
+    setSelectedRescuer((prev) => {
+      if (prev?.userId === loc.userId) return null
+      return loc
+    })
+    setTrackingReport(null)
+    setRoutePath([])
+    setRouteInfo(null)
   }, [])
 
+  const fetchRoute = useCallback(async (originLat, originLng, destLat, destLng) => {
+    setLoadingRoute(true)
+    try {
+      const res = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson`
+      )
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.code === 'Ok' && data.routes?.length) {
+        const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => ({ lat, lng }))
+        setRoutePath(coords)
+        setRouteInfo({ distance: data.routes[0].distance, duration: data.routes[0].duration })
+      }
+    } catch {} finally {
+      setLoadingRoute(false)
+    }
+  }, [])
+
+  const handleTrackReport = useCallback((rep) => {
+    setTrackingReport(rep)
+    if (selectedRescuer && rep.latitude && rep.longitude) {
+      fetchRoute(selectedRescuer.latitude, selectedRescuer.longitude, rep.latitude, rep.longitude)
+    }
+  }, [selectedRescuer, fetchRoute])
+
+  useEffect(() => {
+    if (!trackingReport || !selectedRescuer || !trackingReport.latitude || !trackingReport.longitude) return
+    const interval = setInterval(() => {
+      const current = locations.find((l) => l.userId === selectedRescuer.userId)
+      if (!current) return
+      fetchRoute(
+        current.latitude, current.longitude,
+        trackingReport.latitude, trackingReport.longitude,
+      )
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [trackingReport, selectedRescuer, fetchRoute, locations])
+
+  useEffect(() => {
+    if (!selectedRescuer) {
+      setTrackingReport(null)
+      setRoutePath([])
+      setRouteInfo(null)
+    }
+  }, [selectedRescuer])
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return locations
-    const q = search.toLowerCase()
-    return locations.filter((l) => l.userName?.toLowerCase().includes(q))
+    const list = search.trim()
+      ? locations.filter((l) => l.userName?.toLowerCase().includes(search.toLowerCase()))
+      : locations
+    return [...list].sort((a, b) => {
+      const aOnline = Date.now() - new Date(a.updatedAt).getTime() < 60000
+      const bOnline = Date.now() - new Date(b.updatedAt).getTime() < 60000
+      if (aOnline !== bOnline) return aOnline ? -1 : 1
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    })
   }, [locations, search])
 
   const enRouteCount = useMemo(
@@ -141,26 +206,28 @@ export default function RescuerMap() {
             mapContainerStyle={MAP_STYLE}
             center={center}
             zoom={selectedRescuer ? 14 : 11}
-            onLoad={() => {}}
+            onLoad={(map) => { mapRef.current = map }}
           >
-            {locations.map((loc) => (
-              <Marker
-                key={loc.userId}
-                position={{ lat: loc.latitude, lng: loc.longitude }}
-                title={loc.userName}
-                onClick={() => handleSelect(loc)}
-                icon={{
-                  path: google.maps.SymbolPath.CIRCLE,
-                  scale: selectedRescuer?.userId === loc.userId ? 14 : 10,
-                  fillColor: selectedRescuer?.userId === loc.userId ? '#2563eb' : '#16a34a',
-                  fillOpacity: 0.9,
-                  strokeColor: '#fff',
-                  strokeWeight: 4,
-                }}
-              />
-            ))}
+            {locations
+              .filter((loc) => !trackingReport || loc.userId === selectedRescuer?.userId)
+              .map((loc) => (
+                <Marker
+                  key={loc.userId}
+                  position={{ lat: loc.latitude, lng: loc.longitude }}
+                  title={loc.userName}
+                  onClick={() => handleSelect(loc)}
+                  icon={{
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: selectedRescuer?.userId === loc.userId ? 14 : 10,
+                    fillColor: selectedRescuer?.userId === loc.userId ? '#2563eb' : '#16a34a',
+                    fillOpacity: 0.9,
+                    strokeColor: '#fff',
+                    strokeWeight: 4,
+                  }}
+                />
+              ))}
 
-            {selectedRescuer && (
+            {selectedRescuer && !trackingReport && (
               <InfoWindow
                 position={{ lat: selectedRescuer.latitude, lng: selectedRescuer.longitude }}
                 onCloseClick={() => setSelectedRescuer(null)}
@@ -180,6 +247,27 @@ export default function RescuerMap() {
                 </div>
               </InfoWindow>
             )}
+
+            <Polyline
+              path={trackingReport ? routePath : []}
+              options={{
+                strokeColor: '#2563eb',
+                strokeOpacity: trackingReport && routePath.length > 0 ? 0.8 : 0,
+                strokeWeight: trackingReport && routePath.length > 0 ? 5 : 0,
+                geodesic: true,
+              }}
+            />
+
+            {trackingReport && trackingReport.latitude && trackingReport.longitude && (
+              <Marker
+                position={{ lat: trackingReport.latitude, lng: trackingReport.longitude }}
+                title="Rescue site"
+                icon={{
+                  url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                  scaledSize: new window.google.maps.Size(40, 40),
+                }}
+              />
+            )}
           </GoogleMap>
         </div>
 
@@ -194,7 +282,44 @@ export default function RescuerMap() {
             />
           </div>
 
-          {selectedRescuer && (
+          {trackingReport && (
+            <div className="border-b border-gray-100 bg-blue-50 px-4 py-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Tracking</p>
+                  <p className="text-sm font-bold text-gray-900 mt-0.5">
+                    {trackingReport.animalType || trackingReport.name}
+                  </p>
+                  {trackingReport.location && (
+                    <p className="text-xs text-gray-500 mt-0.5" title={trackingReport.location}>
+                      {trackingReport.location}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => { setTrackingReport(null); setRoutePath([]); setRouteInfo(null) }}
+                  className="shrink-0 text-[11px] text-red-500 hover:text-red-700 font-medium"
+                >
+                  Stop
+                </button>
+              </div>
+              {routeInfo && (
+                <div className="flex items-center gap-3 mt-2 text-xs">
+                  <span className="font-semibold text-blue-700">
+                    {(routeInfo.distance / 1000).toFixed(1)} km
+                  </span>
+                  <span className="font-semibold text-blue-700">
+                    {Math.round(routeInfo.duration / 60)} min
+                  </span>
+                  {loadingRoute && (
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedRescuer && !trackingReport && (
             <div className="border-b border-gray-100 bg-green-50 px-4 py-3">
               <div className="flex items-center justify-between">
                 <p className="font-bold text-gray-900">{selectedRescuer.userName}</p>
@@ -202,7 +327,7 @@ export default function RescuerMap() {
                   onClick={() => setSelectedRescuer(null)}
                   className="text-sm text-gray-500 hover:text-gray-700"
                 >
-                  &times; Clear
+                  &times; Close
                 </button>
               </div>
               <div className="flex items-center gap-2 mt-1">
@@ -224,14 +349,14 @@ export default function RescuerMap() {
             </div>
           )}
 
-          {selectedRescuer && assignLoading && (
+          {selectedRescuer && !trackingReport && assignLoading && (
             <div className="flex items-center justify-center py-8 text-sm text-gray-400">
               <div className="h-5 w-5 mr-2 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
               Loading assignments...
             </div>
           )}
 
-          {selectedRescuer && !assignLoading && assignments.length > 0 && (
+          {selectedRescuer && !trackingReport && !assignLoading && assignments.length > 0 && (
             <div className="border-b border-gray-100 px-4 py-2 bg-gray-50">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                 Assignments ({assignments.length})
@@ -240,7 +365,7 @@ export default function RescuerMap() {
           )}
 
           <div className="flex-1 overflow-y-auto">
-            {!selectedRescuer ? (
+            {!selectedRescuer || trackingReport ? (
               filtered.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-sm text-gray-400">
                   {search ? 'No rescuers found' : 'No rescuers available'}
@@ -249,13 +374,14 @@ export default function RescuerMap() {
                 <div className="divide-y divide-gray-100">
                   {filtered.map((loc) => {
                     const { label, online } = activeAgo(loc.updatedAt)
+                    const isTracked = trackingReport && loc.userId === selectedRescuer?.userId
                     return (
                       <div
                         key={loc.userId}
                         onClick={() => handleSelect(loc)}
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                        className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${isTracked ? 'bg-blue-50' : ''}`}
                       >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-bold text-green-700">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${isTracked ? 'bg-blue-200 text-blue-800' : 'bg-green-100 text-green-700'}`}>
                           {loc.userName?.split(' ').map((n) => n[0]).join('').slice(0, 2) || 'R'}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -265,7 +391,12 @@ export default function RescuerMap() {
                             <span className="text-xs text-gray-500">{label}</span>
                           </div>
                         </div>
-                        {loc.isTracking && (
+                        {isTracked && (
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full">
+                            Tracking
+                          </span>
+                        )}
+                        {!trackingReport && loc.isTracking && (
                           <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded-full">
                             En Route
                           </span>
@@ -283,7 +414,7 @@ export default function RescuerMap() {
                   </div>
                 ) : (
                   assignments.map((rep) => (
-                    <div key={rep._id} className="px-4 py-3 hover:bg-gray-50">
+                    <div key={rep._id} onClick={() => handleTrackReport(rep)} className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-bold text-gray-900 truncate">

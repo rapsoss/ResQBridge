@@ -76,6 +76,16 @@ export const admin = {
       method: 'PATCH',
       body: JSON.stringify({ role }),
     }),
+  createUser: (body) =>
+    request('/admin/users/create', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updatePassword: (uuid, password, currentPassword) =>
+    request(`/admin/users/${uuid}/password`, {
+      method: 'PATCH',
+      body: JSON.stringify({ password, ...(currentPassword ? { currentPassword } : {}) }),
+    }),
   getStats: () => request('/admin/stats'),
 
   getLogs: (params = {}) => {
@@ -148,6 +158,11 @@ export const admin = {
       method: 'PUT',
       body: JSON.stringify(permissions),
     }),
+  updateProfile: (body) =>
+    request('/admin/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
 }
 
 export const rescuer = {
@@ -206,12 +221,9 @@ export const rescuer = {
       body: JSON.stringify({ items }),
     }),
 
-  getVoiceNotes: (reportId) => request(`/rescuer/reports/${reportId}/voice-notes`),
-  addVoiceNote: (reportId, audioUrl, duration) =>
-    request('/rescuer/voice-notes', {
-      method: 'POST',
-      body: JSON.stringify({ reportId, audioUrl, duration }),
-    }),
+  getNotifications: () => request('/rescuer/notifications'),
+  markAllNotificationsRead: () =>
+    request('/rescuer/notifications/read-all', { method: 'POST' }),
 }
 
 export const logs = {

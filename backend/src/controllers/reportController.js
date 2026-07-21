@@ -1,12 +1,7 @@
-const sharp = require("sharp");
-const path = require("path");
-const fs = require("fs");
-const { v4: uuidv4 } = require("uuid");
 const convexClient = require("../config/convex");
 const { anyApi } = require("convex/server");
 const { logEvent } = require("../middleware/logAudit");
 const { notifyAdmin } = require("../services/adminNotification");
-const { STORAGE_DIR } = require("./uploadController");
 
 const URGENCY_MAP = {
   Healthy: "low",
@@ -17,7 +12,8 @@ const URGENCY_MAP = {
 };
 
 const submitReport = async (req, res) => {
-  const { name, phone, category, animalType, wildlifeCondition, location, description, latitude, longitude } = req.body;
+  try {
+  const { name, phone, category, animalType, wildlifeCondition, location, description, latitude, longitude, quantity } = req.body;
 
   if (name && name.length > 100) {
     return res.status(400).json({ message: "Name must be at most 100 characters." });
@@ -37,22 +33,15 @@ const submitReport = async (req, res) => {
 
   const urgency = URGENCY_MAP[wildlifeCondition] || "medium";
 
+  const qty = quantity ? parseInt(quantity, 10) : undefined;
+  if (qty !== undefined && (isNaN(qty) || qty < 1)) {
+    return res.status(400).json({ message: "Quantity must be a positive number." });
+  }
+
   const lat = latitude ? parseFloat(latitude) : undefined;
   const lng = longitude ? parseFloat(longitude) : undefined;
 
   const images = [];
-  if (req.files && req.files.length) {
-    for (const file of req.files) {
-      const ext = path.extname(file.originalname) || ".jpg";
-      const filename = `${uuidv4()}${ext}`;
-      const outputPath = path.join(STORAGE_DIR, filename);
-      await sharp(file.buffer)
-        .resize({ width: 1920, withoutEnlargement: true })
-        .jpeg({ quality: 80, mozjpeg: true })
-        .toFile(outputPath);
-      images.push(`/api/v1/public/files/${filename}`);
-    }
-  }
 
   const metadata = {
     name: name || "Anonymous",
@@ -76,6 +65,7 @@ const submitReport = async (req, res) => {
     category: category || "other",
     animalType,
     urgency,
+    quantity: qty,
     location,
     description,
     images: images.length > 0 ? images.join(",") : undefined,
@@ -92,6 +82,10 @@ const submitReport = async (req, res) => {
   });
 
   res.status(201).json({ message: "Report submitted successfully.", images });
+} catch (err) {
+  console.error("submitReport error:", err);
+  res.status(500).json({ message: "Internal server error: " + err.message });
+  }
 };
 
 module.exports = { submitReport };

@@ -1,16 +1,30 @@
 const convexClient = require("../config/convex");
 const { anyApi } = require("convex/server");
 const { logEvent } = require("../middleware/logAudit");
+const cloudinary = require("../config/cloudinary");
 const { publish } = require("../services/notification");
 const { sendReportStatus } = require("../services/email");
 const { notifyAdmin } = require("../services/adminNotification");
+
+function resolveImageUrls(imagesField) {
+  if (!imagesField) return [];
+  const items = typeof imagesField === "string" ? imagesField.split(",").filter(Boolean) : imagesField;
+  return items.map((img) => {
+    if (img.startsWith("http") || img.startsWith("/api/")) return img;
+    return cloudinary.url(img, {
+      type: "authenticated",
+      sign_url: true,
+      secure: true,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    });
+  });
+}
 
 const RESCUER_STATUS_MAP = {
   pending: "pending",
   assigned: "assigned",
   en_route: "en_route",
   in_progress: "in_progress",
-  transport_to_pwrccc: "transport_to_pwrccc",
   resolved: "resolved",
   failed: "failed",
 };
@@ -51,7 +65,7 @@ const getReports = async (req, res) => {
     urgency: r.urgency || "medium",
     location: r.location,
     description: r.description,
-    images: r.images ? (Array.isArray(r.images) ? r.images : [r.images]) : [],
+    images: r.images ? resolveImageUrls(r.images) : [],
     status: RESCUER_STATUS_MAP[r.status] || r.status,
     assignedTo: r.assignedTo || null,
     latitude: r.latitude ?? null,
@@ -244,21 +258,29 @@ const getStats = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-  const { firstName, lastName, phoneNumber } = req.body;
+  const { firstName, lastName, phoneNumber, email } = req.body;
   const userId = req.user.uuid;
+
+  if (email) {
+    const existing = await convexClient.query(anyApi.users.getUserByEmail, { email: email.toLowerCase().trim() });
+    if (existing && existing.uuid !== userId) {
+      return res.status(409).json({ message: "Email is already in use by another account." });
+    }
+  }
 
   await convexClient.mutation(anyApi.users.updateUser, {
     uuid: userId,
     firstName: firstName || undefined,
     lastName: lastName || undefined,
     phoneNumber: phoneNumber || undefined,
+    email: email ? email.toLowerCase().trim() : undefined,
   });
 
   await logEvent({
     req,
     userId,
     eventType: "profile_update",
-    metadata: { firstName, lastName, phoneNumber },
+    metadata: { firstName, lastName, phoneNumber, email },
   });
 
   await logActivity(userId, "profile_update", `Updated profile${firstName ? ` (first name: ${firstName})` : ''}${lastName ? ` (last name: ${lastName})` : ''}`);
@@ -327,6 +349,25 @@ const getNotes = async (req, res) => {
   res.json({ notes });
 };
 
+const getNotifications = async (req, res) => {
+  const userId = req.user.uuid;
+  const limit = parseInt(req.query.limit, 10) || 50;
+  const notifications = await convexClient.query(anyApi.rescuerNotifications.getNotifications, {
+    userId,
+    limit,
+  });
+  const unreadCount = await convexClient.query(anyApi.rescuerNotifications.getUnreadCount, {
+    userId,
+  });
+  res.json({ notifications, unreadCount });
+};
+
+const markAllNotificationsRead = async (req, res) => {
+  const userId = req.user.uuid;
+  await convexClient.mutation(anyApi.rescuerNotifications.markAllAsRead, { userId });
+  res.json({ message: "All notifications marked as read." });
+};
+
 module.exports = {
   getReports,
   updateReportStatus,
@@ -338,4 +379,6 @@ module.exports = {
   getNotes,
   updateLocation,
   rejectAssignment,
+  getNotifications,
+  markAllNotificationsRead,
 };

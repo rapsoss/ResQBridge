@@ -41,7 +41,7 @@ export default function Modal({
   if (!isOpen) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center overflow-y-auto p-4">
       <div
         className="fixed inset-0 bg-black/50"
         onClick={closeOnOverlayClick ? onClose : undefined}
@@ -51,7 +51,7 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`relative w-full rounded-xl bg-white shadow-xl ${sizes[size]} ${className}`}
+        className={`relative my-auto w-full rounded-xl bg-white shadow-xl ${sizes[size]} ${className}`}
       >
         {title && (
           <div className="flex items-center justify-between border-b px-6 py-4">
@@ -69,7 +69,7 @@ export default function Modal({
             </button>
           </div>
         )}
-        <div className="px-6 py-4">{children}</div>
+        <div className="max-h-[70vh] overflow-y-auto px-6 py-4">{children}</div>
         {footer && (
           <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
             {footer}

@@ -1,6 +1,6 @@
 -- Schema created: 2026-06-12
 -- Source: backend/convex/schema.ts
--- Last updated: 2026-07-12 (added expenses, adminNotifications; updated all comments)
+-- Last updated: 2026-07-21 (added rescuerNotifications, quantity, by_phoneNumber; removed expenses, voiceNotes)
 
 -- ============================================================
 -- otps — One-time passwords for email-based authentication
@@ -31,7 +31,8 @@ CREATE TABLE users (
     availability ENUM('available', 'busy') DEFAULT NULL,
     _creationTime BIGINT NOT NULL,
     INDEX by_email (email),
-    INDEX by_uuid (uuid)
+    INDEX by_uuid (uuid),
+    INDEX by_phoneNumber (phoneNumber)
 );
 
 -- ============================================================
@@ -65,6 +66,7 @@ CREATE TABLE rescuers (
 -- reports — Animal rescue incident reports
 -- Added: 2026-06-20
 -- Aligned with schema: 2026-07-07 (assignedUser, reporterIp, archivedAt, archivedByName, resolvedAt)
+-- Quantity added: 2026-07-21
 -- ============================================================
 CREATE TABLE reports (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -73,6 +75,7 @@ CREATE TABLE reports (
     category VARCHAR(100) NOT NULL,
     animalType VARCHAR(100) NOT NULL,
     urgency VARCHAR(50) NOT NULL,
+    quantity INT DEFAULT NULL,
     location VARCHAR(500) NOT NULL,
     description TEXT DEFAULT NULL,
     images TEXT DEFAULT NULL,
@@ -183,6 +186,22 @@ CREATE TABLE adminNotifications (
     createdAt BIGINT NOT NULL,
     INDEX by_read (read),
     INDEX by_createdAt (createdAt)
+);
+
+-- ============================================================
+-- rescuerNotifications — Real-time alerts for rescuers on assignment
+-- Added: 2026-07-21
+-- ============================================================
+CREATE TABLE rescuerNotifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    reportId VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    message TEXT NOT NULL,
+    read BOOLEAN NOT NULL DEFAULT FALSE,
+    createdAt BIGINT NOT NULL,
+    INDEX by_userId (userId),
+    INDEX by_userId_read (userId, read)
 );
 
 -- ============================================================

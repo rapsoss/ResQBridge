@@ -4,13 +4,12 @@ const { logEvent } = require("../middleware/logAudit");
 function ssoCallback(req, res) {
   const user = req.user;
   if (!user) {
-    return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=sso_failed`);
+    return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/v1/login?error=sso_failed`);
   }
 
   const token = jwt.sign(
     { uuid: user.uuid, email: user.email, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" },
   );
 
   logEvent({
@@ -24,12 +23,12 @@ function ssoCallback(req, res) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
     path: "/",
   });
 
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-  res.redirect(`${frontendUrl}${user.isNew ? "/register?sso=success" : "/login?sso=success"}`);
+  res.redirect(`${frontendUrl}/v1/login?sso=success`);
 }
 
 module.exports = { ssoCallback };

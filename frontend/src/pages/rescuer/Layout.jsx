@@ -25,15 +25,6 @@ const navItems = [
     ),
   },
   {
-    label: 'Team Map',
-    path: '/rescuer/team-map',
-    icon: (
-      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0zM19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-      </svg>
-    ),
-  },
-  {
     label: 'My Shifts',
     path: '/rescuer/shifts',
     icon: (
@@ -65,7 +56,7 @@ const navItems = [
 export default function RescuerLayout() {
   const { user, loading: authLoading, logout } = useAuth()
   const { userPos, requestLocation } = useLocationContext()
-  const { toasts, unreadCount, markAllRead } = useNotifications()
+  const { notifications, unreadCount, markAllRead, fetchNotifications } = useNotifications()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -138,6 +129,9 @@ export default function RescuerLayout() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-20 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
       <aside className={`fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-gray-300 bg-white shadow-lg transition-transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-600 text-lg font-bold text-white shadow">
@@ -149,7 +143,7 @@ export default function RescuerLayout() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="flex-1 overflow-y-hidden px-4 py-6">
           <nav className="space-y-2">
             {navItems.map((item) => {
               const active = location.pathname === item.path
@@ -200,8 +194,8 @@ export default function RescuerLayout() {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col min-h-screen md:ml-64">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-300 bg-white px-6 py-4 shadow-sm">
+      <div className="flex flex-1 flex-col min-h-screen md:ml-64" onClick={() => { if (sidebarOpen) setSidebarOpen(false) }}>
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-300 bg-white px-3 md:px-6 py-3 md:py-4 shadow-sm">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -212,33 +206,36 @@ export default function RescuerLayout() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
               </svg>
             </button>
+            <span className="md:hidden text-lg font-semibold text-gray-800 capitalize">
+              {location.pathname === '/rescuer/assignments' ? 'Assignments' : location.pathname.split('/').pop().replace('-', ' ')}
+            </span>
             <span className="hidden md:block text-lg font-semibold text-gray-800 capitalize">
               {location.pathname === '/rescuer/assignments' ? 'All Assignments' : location.pathname.split('/').pop().replace('-', ' ')}
             </span>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 md:gap-5">
             <button
               onClick={() => setNotifOpen((prev) => !prev)}
               className="relative"
               aria-label="Notifications"
             >
-              <svg className="h-7 w-7 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="h-6 w-6 md:h-7 md:w-7 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
               </svg>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-full bg-red-500 text-[10px] md:text-xs font-bold text-white">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </button>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
+            <div className="flex items-center gap-2 md:gap-4">
+              <div className="hidden md:block text-right">
                 <p className="text-base font-bold text-gray-900">{user.firstName} {user.lastName}</p>
                 <p className="text-sm text-gray-500">{user.email}</p>
               </div>
               <button
                 onClick={() => navigate('/rescuer/profile')}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-600 text-lg font-bold text-white shadow hover:bg-amber-700 transition-colors"
+                className="flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-full bg-amber-600 text-sm md:text-lg font-bold text-white shadow hover:bg-amber-700 transition-colors"
               >
                 {initials || 'R'}
               </button>
@@ -252,32 +249,46 @@ export default function RescuerLayout() {
       {notifOpen && (
         <div
           ref={notifRef}
-          className="fixed top-20 right-6 z-50 w-80 rounded-2xl border-2 border-gray-200 bg-white shadow-xl"
+          className="fixed top-16 md:top-20 right-3 md:right-6 z-50 w-[calc(100vw-1.5rem)] md:w-80 rounded-2xl border-2 border-gray-200 bg-white shadow-xl"
         >
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <h3 className="text-base font-bold text-gray-900">Notifications</h3>
-            {toasts.length > 0 && (
+            <div className="flex gap-2">
               <button
-                onClick={() => { markAllRead(); setNotifOpen(false) }}
-                className="text-xs font-semibold text-amber-600 hover:text-amber-700"
+                onClick={() => { navigate('/rescuer/notifications'); setNotifOpen(false) }}
+                className="text-xs font-semibold text-gray-500 hover:text-gray-700"
               >
-                Mark all read
+                View all
               </button>
-            )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={() => { markAllRead() }}
+                  className="text-xs font-semibold text-amber-600 hover:text-amber-700"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
           </div>
           <div className="max-h-80 overflow-y-auto px-5 py-3 space-y-2">
-            {toasts.length === 0 ? (
+            {notifications.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-6">No notifications</p>
             ) : (
-              toasts.map((t) => (
+              notifications.map((n) => (
                 <div
-                  key={t.id}
-                  className={`rounded-xl border-2 px-4 py-3 ${
-                    t.type === 'success' ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50'
+                  key={n._id}
+                  onClick={() => {
+                    navigate('/rescuer/assignments', { state: { reportId: n.reportId }, replace: true })
+                    setNotifOpen(false)
+                  }}
+                  className={`cursor-pointer rounded-xl border-2 px-4 py-3 transition-colors hover:bg-amber-50 ${
+                    n.read ? 'border-gray-200 bg-white' : 'border-amber-300 bg-amber-50'
                   }`}
                 >
-                  <p className="text-sm font-bold text-gray-900">{t.title}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">{t.message}</p>
+                  <p className={`text-sm ${n.read ? 'font-semibold text-gray-700' : 'font-bold text-gray-900'}`}>{n.message}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
               ))
             )}

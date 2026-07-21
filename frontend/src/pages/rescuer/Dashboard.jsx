@@ -98,7 +98,7 @@ export default function RescuerDashboard() {
   ]
 
   return (
-    <main className="flex-1 overflow-y-auto p-6 md:p-8">
+    <main className="flex-1 overflow-y-auto p-3 md:p-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
@@ -107,21 +107,21 @@ export default function RescuerDashboard() {
           <p className="mt-1 text-lg text-gray-500">Here is your rescue summary</p>
         </div>
 
-        <div className="grid gap-5 grid-cols-2 sm:grid-cols-4">
+        <div className="grid gap-3 md:gap-5 grid-cols-2">
           {statCards.map((card) => (
             <div
               key={card.label}
-              className={`rounded-2xl border-2 ${card.border} ${card.bg} p-6 shadow-sm`}
+              className={`rounded-xl md:rounded-2xl border-2 ${card.border} ${card.bg} p-3 md:p-6 shadow-sm`}
             >
-              <div className="flex items-center gap-4">
-                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${card.bg} ${card.text}`}>
-                  {card.icon}
+              <div className="flex flex-col md:flex-row items-center gap-1 md:gap-4 text-center md:text-left">
+                <div className={`flex h-8 w-8 md:h-14 md:w-14 shrink-0 items-center justify-center rounded-lg md:rounded-xl ${card.bg} ${card.text}`}>
+                  <div className="scale-[0.6] md:scale-100">{card.icon}</div>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold uppercase tracking-wide text-gray-700">{card.label}</p>
-                  <p className={`mt-1 text-4xl font-extrabold leading-none ${card.valueColor}`}>
+                  <p className="text-[10px] md:text-sm font-bold uppercase tracking-wide text-gray-700">{card.label}</p>
+                  <p className={`mt-0 md:mt-1 text-lg md:text-4xl font-extrabold leading-none ${card.valueColor}`}>
                     {loading ? (
-                      <span className="inline-block h-9 w-16 animate-pulse rounded bg-gray-300" />
+                      <span className="inline-block h-5 md:h-9 w-10 md:w-16 animate-pulse rounded bg-gray-300" />
                     ) : (
                       card.value
                     )}
@@ -208,24 +208,24 @@ export default function RescuerDashboard() {
                   className="rounded-2xl border-2 border-gray-200 bg-white p-5 transition-all hover:border-amber-400 hover:shadow-md cursor-pointer"
                   onClick={() => navigate('/rescuer/assignments')}
                 >
-                  <div className="flex items-start gap-4">
-                    <span className="mt-0.5">{(() => { const Icon = CATEGORY_ICONS[r.category] || ClipboardIcon; return <Icon className="w-7 h-7 text-gray-600" />; })()}</span>
+                  <div className="flex items-start gap-3 md:gap-4">
+                    <span className="mt-0.5 hidden sm:block">{(() => { const Icon = CATEGORY_ICONS[r.category] || ClipboardIcon; return <Icon className="w-5 h-5 md:w-7 md:h-7 text-gray-600" />; })()}</span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-lg font-bold text-gray-900">{r.name}</span>
-                        <span className={`rounded-full border-2 px-3 py-0.5 text-sm font-semibold ${STATUS_BADGE[r.status] || ''}`}>
+                      <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                        <span className="text-sm md:text-lg font-bold text-gray-900">{r.name}</span>
+                        <span className={`rounded-full border px-1.5 md:px-3 py-0.5 text-[10px] md:text-sm font-semibold ${STATUS_BADGE[r.status] || ''}`}>
                           {r.status.replace('_', ' ')}
                         </span>
-                        <span className={`rounded-full px-3 py-0.5 text-sm font-semibold ${URGENCY_LABEL[r.urgency]?.class || 'bg-gray-100 text-gray-700'}`}>
+                        <span className={`rounded-full px-1.5 md:px-3 py-0.5 text-[10px] md:text-sm font-semibold ${URGENCY_LABEL[r.urgency]?.class || 'bg-gray-100 text-gray-700'}`}>
                           {URGENCY_LABEL[r.urgency]?.label || r.urgency}
                         </span>
                       </div>
-                      <p className="mt-1 text-base text-gray-600">
+                      <p className="mt-0.5 md:mt-1 text-sm md:text-base text-gray-600 truncate">
                         {r.animalType} &middot; {r.location}
                       </p>
                     </div>
-                    <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
-                      {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    <span className="text-[10px] md:text-sm text-gray-500 font-medium whitespace-nowrap">
+                      {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
                 </div>

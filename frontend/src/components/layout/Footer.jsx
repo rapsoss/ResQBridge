@@ -54,7 +54,7 @@ export default function Footer() {
                 ResQBridge
               </Link>
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-gray-500">
-                A community-driven platform connecting wildlife rescue teams, volunteers, and concerned citizens across Palawan.
+                A community-driven platform connecting wildlife rescue teams and concerned citizens across Palawan.
               </p>
             </div>
 

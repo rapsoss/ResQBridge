@@ -7,7 +7,6 @@ const reportStatus = v.union(
   v.literal("assigned"),
   v.literal("en_route"),
   v.literal("in_progress"),
-  v.literal("transport_to_pwrccc"),
   v.literal("resolved"),
   v.literal("failed"),
 );
@@ -82,6 +81,7 @@ export const insertReport = mutation({
     category: v.string(),
     animalType: v.string(),
     urgency: v.string(),
+    quantity: v.optional(v.number()),
     location: v.string(),
     description: v.optional(v.string()),
     images: v.optional(v.string()),
@@ -97,6 +97,7 @@ export const insertReport = mutation({
       category: args.category,
       animalType: args.animalType,
       urgency: args.urgency,
+      quantity: args.quantity,
       location: args.location,
       description: args.description,
       images: args.images,
