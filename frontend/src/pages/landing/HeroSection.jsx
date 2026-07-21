@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui'
 
 export default function HeroSection({
-  badge = 'Community Powered',
+  badge = 'Wildlife Rescue',
   title = 'Helping Lost Wildlife Find Their Way Home',
-  description = 'Report lost or injured wildlife, connect with your community, and help protect and reunite animals with their natural habitats.',
+  description = 'Report lost or injured wildlife and help protect and reunite them with their natural habitats.',
 }) {
   const scrollToHowItWorks = () => {
     document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })

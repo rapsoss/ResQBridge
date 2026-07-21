@@ -18,10 +18,10 @@ import type * as logs from "../logs.js";
 import type * as notes from "../notes.js";
 import type * as otp from "../otp.js";
 import type * as reports from "../reports.js";
+import type * as rescuerNotifications from "../rescuerNotifications.js";
 import type * as rescuers from "../rescuers.js";
 import type * as shifts from "../shifts.js";
 import type * as users from "../users.js";
-import type * as voiceNotes from "../voiceNotes.js";
 
 import type {
   ApiFromModules,
@@ -40,10 +40,10 @@ declare const fullApi: ApiFromModules<{
   notes: typeof notes;
   otp: typeof otp;
   reports: typeof reports;
+  rescuerNotifications: typeof rescuerNotifications;
   rescuers: typeof rescuers;
   shifts: typeof shifts;
   users: typeof users;
-  voiceNotes: typeof voiceNotes;
 }>;
 
 /**

@@ -38,6 +38,16 @@ export const getUserByEmail = query({
   },
 });
 
+export const getUserByPhoneNumber = query({
+  args: { phoneNumber: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_phoneNumber", (q) => q.eq("phoneNumber", args.phoneNumber))
+      .unique();
+  },
+});
+
 export const getUserByUuid = query({
   args: { uuid: v.string() },
   handler: async (ctx, args) => {
@@ -61,6 +71,7 @@ export const updateUser = mutation({
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -72,6 +83,7 @@ export const updateUser = mutation({
     if (args.firstName !== undefined) patch.firstName = args.firstName;
     if (args.lastName !== undefined) patch.lastName = args.lastName;
     if (args.phoneNumber !== undefined) patch.phoneNumber = args.phoneNumber;
+    if (args.email !== undefined) patch.email = args.email;
     return await ctx.db.patch(user._id, patch);
   },
 });

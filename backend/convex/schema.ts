@@ -29,7 +29,8 @@ export default defineSchema({
     )),
   })
     .index("by_email", ["email"])
-    .index("by_uuid", ["uuid"]),
+    .index("by_uuid", ["uuid"])
+    .index("by_phoneNumber", ["phoneNumber"]),
 
   admins: defineTable({
     email: v.string(),
@@ -52,6 +53,7 @@ export default defineSchema({
     category: v.string(),
     animalType: v.string(),
     urgency: v.string(),
+    quantity: v.optional(v.number()),
     location: v.string(),
     description: v.optional(v.string()),
     images: v.optional(v.string()),
@@ -86,6 +88,17 @@ export default defineSchema({
   })
     .index("by_read", ["read"])
     .index("by_createdAt", ["createdAt"]),
+
+  rescuerNotifications: defineTable({
+    userId: v.string(),
+    reportId: v.string(),
+    type: v.string(),
+    message: v.string(),
+    read: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_read", ["userId", "read"]),
 
   activityLogs: defineTable({
     userId: v.string(),
@@ -154,25 +167,6 @@ export default defineSchema({
     .index("by_eventType", ["eventType"])
     .index("by_ipAddress", ["ipAddress"])
     .index("by_createdAt", ["createdAt"]),
-
-  expenses: defineTable({
-    userId: v.string(),
-    reportId: v.optional(v.string()),
-    category: v.string(),
-    amount: v.number(),
-    description: v.string(),
-    receiptImages: v.optional(v.array(v.string())),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("approved"),
-      v.literal("reimbursed"),
-      v.literal("rejected"),
-    ),
-    createdAt: v.number(),
-  })
-    .index("by_userId", ["userId"])
-    .index("by_reportId", ["reportId"]),
-
   reportNotes: defineTable({
     reportId: v.string(),
     userId: v.string(),
@@ -182,13 +176,4 @@ export default defineSchema({
   })
     .index("by_reportId", ["reportId"]),
 
-  voiceNotes: defineTable({
-    reportId: v.string(),
-    userId: v.string(),
-    userName: v.string(),
-    audioUrl: v.string(),
-    duration: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_reportId", ["reportId"]),
 });

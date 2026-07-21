@@ -28,17 +28,31 @@ export default function EditConfig({ section }) {
       howItWorks: { title: '', subtitle: '', steps: [] },
       successStories: { title: '', subtitle: '', stories: [] },
       gallery: { title: '', subtitle: '', images: [] },
-      volunteer: { title: '', subtitle: '', roles: [], requirements: [], cta: { label: '', link: '' } },
-      trustSection: { title: '', subtitle: '', mediaMentions: [], awards: [] },
+      trustSection: {
+        title: '',
+        subtitle: '',
+        mediaMentions: [
+          { name: 'Wildlife Daily', logo: 'WD', desc: 'Wildlife Conservation Platform of the Year', image: '' },
+          { name: 'Eco Times', logo: 'ET', desc: 'Featured as top innovator in wildlife conservation', image: '' },
+          { name: 'Palawan News', logo: 'PN', desc: 'ResQBridge connects rescuers and citizens island-wide', image: '' },
+        ],
+        awards: [
+          { title: 'Best Conservation Tech', year: '2025', org: 'ASEAN Biodiversity', image: '' },
+          { title: 'Community Impact Award', year: '2025', org: 'Wildlife Rescue Alliance', image: '' },
+          { title: 'Innovation in Rescue', year: '2024', org: 'Palawan Council', image: '' },
+        ],
+      },
       partners: { title: '', subtitle: '', partners: [] },
     }
     const nested = {
-      contact: { social: { facebook: '', instagram: '', twitter: '' } },
+      contact: { social: { facebook: '', instagram: '', twitter: '', tiktok: '' } },
     }
     for (const [key, defaults] of Object.entries(sections)) {
-      if (!cfg[key]) { cfg[key] = defaults; continue }
+      if (!cfg[key]) { cfg[key] = structuredClone(defaults); continue }
       for (const [nestedKey, nestedVal] of Object.entries(defaults)) {
-        if (cfg[key][nestedKey] === undefined) cfg[key][nestedKey] = nestedVal
+        if (cfg[key][nestedKey] === undefined || (Array.isArray(cfg[key][nestedKey]) && !cfg[key][nestedKey].length)) {
+          cfg[key][nestedKey] = structuredClone(nestedVal)
+        }
       }
     }
     for (const [key, defaults] of Object.entries(nested)) {
@@ -161,7 +175,7 @@ export default function EditConfig({ section }) {
       const c = structuredClone(prev)
       if (!c.successStories) c.successStories = { title: '', subtitle: '', stories: [] }
       if (!c.successStories.stories) c.successStories.stories = []
-      c.successStories.stories.push({ species: '', quote: '', result: '', fullStory: '', name: '', role: '' })
+      c.successStories.stories.push({ species: '', quote: '', result: '', fullStory: '', name: '', role: '', image: '' })
       return c
     })
     setDirty(true)
@@ -199,6 +213,7 @@ export default function EditConfig({ section }) {
   function handleGalleryImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ section: 'gallery', index, progress: 0 })
     xhr.upload.onprogress = (e) => {
@@ -227,52 +242,12 @@ export default function EditConfig({ section }) {
     xhr.send(formData)
   }
 
-  function addVolunteerRole() {
-    setConfig((prev) => {
-      const c = structuredClone(prev)
-      if (!c.volunteer) c.volunteer = { title: '', subtitle: '', roles: [], requirements: [], cta: { label: '', link: '' } }
-      if (!c.volunteer.roles) c.volunteer.roles = []
-      c.volunteer.roles.push({ title: '', desc: '' })
-      return c
-    })
-    setDirty(true)
-  }
-
-  function removeVolunteerRole(index) {
-    setConfig((prev) => {
-      const c = structuredClone(prev)
-      c.volunteer.roles.splice(index, 1)
-      return c
-    })
-    setDirty(true)
-  }
-
-  function addVolunteerRequirement() {
-    setConfig((prev) => {
-      const c = structuredClone(prev)
-      if (!c.volunteer) c.volunteer = { title: '', subtitle: '', roles: [], requirements: [], cta: { label: '', link: '' } }
-      if (!c.volunteer.requirements) c.volunteer.requirements = []
-      c.volunteer.requirements.push('')
-      return c
-    })
-    setDirty(true)
-  }
-
-  function removeVolunteerRequirement(index) {
-    setConfig((prev) => {
-      const c = structuredClone(prev)
-      c.volunteer.requirements.splice(index, 1)
-      return c
-    })
-    setDirty(true)
-  }
-
   function addPartner() {
     setConfig((prev) => {
       const c = structuredClone(prev)
       if (!c.partners) c.partners = { title: '', subtitle: '', partners: [] }
       if (!c.partners.partners) c.partners.partners = []
-      c.partners.partners.push({ name: '', type: '' })
+      c.partners.partners.push({ name: '', type: '', desc: '', image: '' })
       return c
     })
     setDirty(true)
@@ -287,12 +262,49 @@ export default function EditConfig({ section }) {
     setDirty(true)
   }
 
+  function updatePartnerField(index, field, value) {
+    setConfig((prev) => {
+      const c = structuredClone(prev)
+      if (!c.partners) c.partners = { title: '', subtitle: '', partners: [] }
+      c.partners.partners[index][field] = value
+      return c
+    })
+    setDirty(true)
+  }
+
+  function handlePartnerImageUpload(index, file) {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('visibility', 'public')
+    const xhr = new XMLHttpRequest()
+    setUploading({ section: 'partner', index, progress: 0 })
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100)
+        setUploading({ section: 'partner', index, progress: pct })
+      }
+    }
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText)
+        updatePartnerField(index, 'image', data.url)
+      } else {
+        try { const d = JSON.parse(xhr.responseText); alert(d.message || 'Upload failed') } catch { alert('Upload failed: ' + xhr.status) }
+      }
+      setUploading(null)
+    }
+    xhr.onerror = () => { alert('Network error - upload failed'); setUploading(null) }
+    xhr.open('POST', UPLOAD_URL)
+    xhr.withCredentials = true
+    xhr.send(formData)
+  }
+
   function addMediaMention() {
     setConfig((prev) => {
       const c = structuredClone(prev)
       if (!c.trustSection) c.trustSection = { title: '', subtitle: '', mediaMentions: [], awards: [] }
       if (!c.trustSection.mediaMentions) c.trustSection.mediaMentions = []
-      c.trustSection.mediaMentions.push({ name: '', logo: '', desc: '' })
+      c.trustSection.mediaMentions.push({ name: '', logo: '', desc: '', image: '' })
       return c
     })
     setDirty(true)
@@ -312,7 +324,7 @@ export default function EditConfig({ section }) {
       const c = structuredClone(prev)
       if (!c.trustSection) c.trustSection = { title: '', subtitle: '', mediaMentions: [], awards: [] }
       if (!c.trustSection.awards) c.trustSection.awards = []
-      c.trustSection.awards.push({ title: '', year: '', org: '' })
+      c.trustSection.awards.push({ title: '', year: '', org: '', image: '' })
       return c
     })
     setDirty(true)
@@ -330,6 +342,7 @@ export default function EditConfig({ section }) {
   function handleCarouselImageUpload(index, file) {
     const formData = new FormData()
     formData.append('image', file)
+    formData.append('visibility', 'public')
     const xhr = new XMLHttpRequest()
     setUploading({ index, progress: 0 })
     xhr.upload.onprogress = (e) => {
@@ -362,10 +375,37 @@ export default function EditConfig({ section }) {
     setDirty(true)
   }
 
+  function handleNewsImageUpload(index, file) {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('visibility', 'public')
+    const xhr = new XMLHttpRequest()
+    setUploading({ section: 'news', index, progress: 0 })
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100)
+        setUploading({ section: 'news', index, progress: pct })
+      }
+    }
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText)
+        updateNewsItem(index, 'image', data.url)
+      } else {
+        try { const d = JSON.parse(xhr.responseText); alert(d.message || 'Upload failed') } catch { alert('Upload failed: ' + xhr.status) }
+      }
+      setUploading(null)
+    }
+    xhr.onerror = () => { alert('Network error - upload failed'); setUploading(null) }
+    xhr.open('POST', UPLOAD_URL)
+    xhr.withCredentials = true
+    xhr.send(formData)
+  }
+
   function addNewsItem() {
     setConfig((prev) => {
       const copy = structuredClone(prev)
-      copy.newsEvents.news.push({ date: '', title: '', category: '', desc: '' })
+      copy.newsEvents.news.push({ date: '', title: '', category: '', desc: '', image: '' })
       return copy
     })
     setDirty(true)
@@ -389,10 +429,37 @@ export default function EditConfig({ section }) {
     setDirty(true)
   }
 
+  function handleEventImageUpload(index, file) {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('visibility', 'public')
+    const xhr = new XMLHttpRequest()
+    setUploading({ section: 'event', index, progress: 0 })
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100)
+        setUploading({ section: 'event', index, progress: pct })
+      }
+    }
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText)
+        updateEvent(index, 'image', data.url)
+      } else {
+        try { const d = JSON.parse(xhr.responseText); alert(d.message || 'Upload failed') } catch { alert('Upload failed: ' + xhr.status) }
+      }
+      setUploading(null)
+    }
+    xhr.onerror = () => { alert('Network error - upload failed'); setUploading(null) }
+    xhr.open('POST', UPLOAD_URL)
+    xhr.withCredentials = true
+    xhr.send(formData)
+  }
+
   function addEvent() {
     setConfig((prev) => {
       const copy = structuredClone(prev)
-      copy.newsEvents.events.push({ date: '', title: '', location: '', desc: '' })
+      copy.newsEvents.events.push({ date: '', title: '', location: '', desc: '', image: '' })
       return copy
     })
     setDirty(true)
@@ -407,14 +474,141 @@ export default function EditConfig({ section }) {
     setDirty(true)
   }
 
+  function updateMention(index, field, value) {
+    setConfig((prev) => {
+      const c = structuredClone(prev)
+      if (!c.trustSection) c.trustSection = { title: '', subtitle: '', mediaMentions: [], awards: [] }
+      c.trustSection.mediaMentions[index][field] = value
+      return c
+    })
+    setDirty(true)
+  }
+
+  function updateAward(index, field, value) {
+    setConfig((prev) => {
+      const c = structuredClone(prev)
+      if (!c.trustSection) c.trustSection = { title: '', subtitle: '', mediaMentions: [], awards: [] }
+      c.trustSection.awards[index][field] = value
+      return c
+    })
+    setDirty(true)
+  }
+
+  function handleMentionImageUpload(index, file) {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('visibility', 'public')
+    const xhr = new XMLHttpRequest()
+    setUploading({ section: 'mention', index, progress: 0 })
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100)
+        setUploading({ section: 'mention', index, progress: pct })
+      }
+    }
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText)
+        updateMention(index, 'image', data.url)
+      } else {
+        try { const d = JSON.parse(xhr.responseText); alert(d.message || 'Upload failed') } catch { alert('Upload failed: ' + xhr.status) }
+      }
+      setUploading(null)
+    }
+    xhr.onerror = () => { alert('Network error - upload failed'); setUploading(null) }
+    xhr.open('POST', UPLOAD_URL)
+    xhr.withCredentials = true
+    xhr.send(formData)
+  }
+
+  function handleAwardImageUpload(index, file) {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('visibility', 'public')
+    const xhr = new XMLHttpRequest()
+    setUploading({ section: 'award', index, progress: 0 })
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100)
+        setUploading({ section: 'award', index, progress: pct })
+      }
+    }
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText)
+        updateAward(index, 'image', data.url)
+      } else {
+        try { const d = JSON.parse(xhr.responseText); alert(d.message || 'Upload failed') } catch { alert('Upload failed: ' + xhr.status) }
+      }
+      setUploading(null)
+    }
+    xhr.onerror = () => { alert('Network error - upload failed'); setUploading(null) }
+    xhr.open('POST', UPLOAD_URL)
+    xhr.withCredentials = true
+    xhr.send(formData)
+  }
+
+  function updateStoryField(index, field, value) {
+    setConfig((prev) => {
+      const c = structuredClone(prev)
+      if (!c.successStories) c.successStories = { title: '', subtitle: '', stories: [] }
+      c.successStories.stories[index][field] = value
+      return c
+    })
+    setDirty(true)
+  }
+
+  function handleStoryImageUpload(index, file) {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('visibility', 'public')
+    const xhr = new XMLHttpRequest()
+    setUploading({ section: 'story', index, progress: 0 })
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100)
+        setUploading({ section: 'story', index, progress: pct })
+      }
+    }
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText)
+        updateStoryField(index, 'image', data.url)
+      } else {
+        try { const d = JSON.parse(xhr.responseText); alert(d.message || 'Upload failed') } catch { alert('Upload failed: ' + xhr.status) }
+      }
+      setUploading(null)
+    }
+    xhr.onerror = () => { alert('Network error - upload failed'); setUploading(null) }
+    xhr.open('POST', UPLOAD_URL)
+    xhr.withCredentials = true
+    xhr.send(formData)
+  }
+
+  function pruneEmpty(list, field) {
+    return (list || []).filter((item) => item[field]?.trim())
+  }
+
   async function handleSave() {
     try {
       setSaving(true)
       setMessage(null)
       const cleaned = { ...config }
-      if (cleaned.wildlifeGuide) {
-        cleaned.wildlifeGuide = cleaned.wildlifeGuide.filter((s) => s.name.trim() !== '')
+      if (cleaned.wildlifeGuide) cleaned.wildlifeGuide = cleaned.wildlifeGuide.filter((s) => s.name?.trim())
+      if (cleaned.newsEvents) {
+        cleaned.newsEvents.news = pruneEmpty(cleaned.newsEvents.news, 'title')
+        cleaned.newsEvents.events = pruneEmpty(cleaned.newsEvents.events, 'title')
       }
+      if (cleaned.carousel) cleaned.carousel = pruneEmpty(cleaned.carousel, 'title')
+      if (cleaned.howItWorks?.steps) cleaned.howItWorks.steps = pruneEmpty(cleaned.howItWorks.steps, 'title')
+      if (cleaned.successStories?.stories) cleaned.successStories.stories = pruneEmpty(cleaned.successStories.stories, 'name')
+      if (cleaned.gallery?.images) cleaned.gallery.images = cleaned.gallery.images.filter((img) => img.image?.trim())
+      if (cleaned.partners?.partners) cleaned.partners.partners = pruneEmpty(cleaned.partners.partners, 'name')
+      if (cleaned.trustSection) {
+        cleaned.trustSection.mediaMentions = pruneEmpty(cleaned.trustSection.mediaMentions, 'name')
+        cleaned.trustSection.awards = pruneEmpty(cleaned.trustSection.awards, 'title')
+      }
+      if (cleaned.faq) cleaned.faq = cleaned.faq.filter((item) => item.q?.trim())
       await adminApi.updateLandingConfig(cleaned)
       setMessage({ type: 'success', text: section === 'wildlifeGuide' ? 'Wildlife Guide content saved.' : 'Landing page content saved.' })
       setDirty(false)
@@ -574,18 +768,18 @@ export default function EditConfig({ section }) {
           <h2 className="text-lg font-semibold text-gray-900">Contact Info</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Emergency Hotline</label>
-              <input
-                value={config.contact.emergencyHotline}
-                onChange={(e) => update('contact.emergencyHotline', e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-              />
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-700">Phone</label>
               <input
                 value={config.contact.phone}
                 onChange={(e) => update('contact.phone', e.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Telephone</label>
+              <input
+                value={config.contact.telephone}
+                onChange={(e) => update('contact.telephone', e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
               />
             </div>
@@ -627,6 +821,10 @@ export default function EditConfig({ section }) {
                 <div>
                   <label className="block text-xs text-gray-500">Twitter</label>
                   <input value={config.contact?.social?.twitter || ''} onChange={(e) => update('contact.social.twitter', e.target.value)} placeholder="https://twitter.com/..." className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500">TikTok</label>
+                  <input value={config.contact?.social?.tiktok || ''} onChange={(e) => update('contact.social.tiktok', e.target.value)} placeholder="https://tiktok.com/..." className="mt-0.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" />
                 </div>
               </div>
             </div>
@@ -822,18 +1020,7 @@ export default function EditConfig({ section }) {
                         className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
                       />
                     </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">Icon (SVG path)</label>
-                      <input
-                        value={step.icon}
-                        onChange={(e) => {
-                          setConfig((prev) => { const c = structuredClone(prev); c.howItWorks.steps[i].icon = e.target.value; return c })
-                          setDirty(true)
-                        }}
-                        placeholder="SVG path (stroke d attribute)"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono text-xs outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-                      />
-                    </div>
+
                   </div>
                 </div>
               ))}
@@ -941,6 +1128,22 @@ export default function EditConfig({ section }) {
                         placeholder="Enter full story (shown in modal)"
                         className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
                       />
+                    </div>
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-medium text-gray-600">Image</label>
+                      {story.image ? (
+                        <div className="flex items-center gap-3">
+                          <img src={story.image} alt="" className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
+                          <button onClick={() => updateStoryField(i, 'image', '')} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                        </div>
+                      ) : null}
+                      <label className={`mt-1 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 ${uploading?.section === 'story' && uploading?.index === i ? 'pointer-events-none opacity-50' : ''}`}>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {uploading?.section === 'story' && uploading?.index === i ? `${uploading.progress}%` : 'Upload Image'}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleStoryImageUpload(i, f); e.target.value = '' }} />
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -1065,130 +1268,6 @@ export default function EditConfig({ section }) {
           </div>
         </section>}
 
-        {section === 'volunteer' && <section className="rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-900">Volunteer Section</h2>
-          <div className="mt-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Title</label>
-              <input
-                value={config.volunteer?.title || ''}
-                onChange={(e) => update('volunteer.title', e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Subtitle</label>
-              <textarea
-                rows={2}
-                value={config.volunteer?.subtitle || ''}
-                onChange={(e) => update('volunteer.subtitle', e.target.value)}
-                className="mt-1 w-full resize-y rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-              />
-            </div>
-          </div>
-          <div className="mt-8">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Roles</h3>
-              <button onClick={addVolunteerRole} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
-                + Add Role
-              </button>
-            </div>
-            <div className="mt-3 space-y-4">
-              {(config.volunteer?.roles || []).map((role, i) => (
-                <div key={i} className="rounded-lg border border-gray-200 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-xs font-semibold text-gray-500 uppercase">Role {i + 1}</p>
-                    <button
-                      onClick={() => removeVolunteerRole(i)}
-                      className="shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="mt-3">
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Role Title</label>
-                    <input
-                      value={role.title}
-                      onChange={(e) => { setConfig((prev) => { const c = structuredClone(prev); c.volunteer.roles[i].title = e.target.value; return c }); setDirty(true) }}
-                      placeholder="Enter role title"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Role Description</label>
-                    <textarea
-                      rows={2}
-                      value={role.desc}
-                      onChange={(e) => { setConfig((prev) => { const c = structuredClone(prev); c.volunteer.roles[i].desc = e.target.value; return c }); setDirty(true) }}
-                      placeholder="Enter role description"
-                      className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-8">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Requirements</h3>
-              <button onClick={addVolunteerRequirement} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
-                + Add Requirement
-              </button>
-            </div>
-            <div className="mt-3 space-y-3">
-              {(config.volunteer?.requirements || []).map((req, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Requirement {i + 1}</label>
-                    <input
-                      value={req}
-                      onChange={(e) => {
-                        setConfig((prev) => { const c = structuredClone(prev); c.volunteer.requirements[i] = e.target.value; return c })
-                        setDirty(true)
-                      }}
-                      placeholder={`Enter requirement ${i + 1}`}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-                    />
-                  </div>
-                  <button
-                    onClick={() => removeVolunteerRequirement(i)}
-                    className="shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-8">
-            <h3 className="text-sm font-semibold text-gray-900">CTA Button</h3>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Button Label</label>
-                <input
-                  value={config.volunteer?.cta?.label || ''}
-                  onChange={(e) => update('volunteer.cta.label', e.target.value)}
-                  placeholder="Enter button label"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Button Link</label>
-                <input
-                  value={config.volunteer?.cta?.link || ''}
-                  onChange={(e) => update('volunteer.cta.link', e.target.value)}
-                  placeholder="Enter button link"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-                />
-              </div>
-            </div>
-          </div>
-        </section>}
-
         {section === 'partners' && <section className="rounded-xl border border-gray-200 bg-white p-6">
           <h2 className="text-lg font-semibold text-gray-900">Partners</h2>
           <div className="mt-4 space-y-4">
@@ -1250,6 +1329,32 @@ export default function EditConfig({ section }) {
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
                       />
                     </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Description</label>
+                    <textarea
+                      rows={2}
+                      value={partner.desc}
+                      onChange={(e) => updatePartnerField(i, 'desc', e.target.value)}
+                      placeholder="Enter description about this partner"
+                      className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Logo Image</label>
+                    {partner.image ? (
+                      <div className="flex items-center gap-3">
+                        <img src={partner.image} alt="" className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
+                        <button onClick={() => updatePartnerField(i, 'image', '')} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                      </div>
+                    ) : null}
+                    <label className={`mt-1 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 ${uploading?.section === 'partner' && uploading?.index === i ? 'pointer-events-none opacity-50' : ''}`}>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {uploading?.section === 'partner' && uploading?.index === i ? `${uploading.progress}%` : 'Upload Logo'}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePartnerImageUpload(i, f); e.target.value = '' }} />
+                    </label>
                   </div>
                 </div>
               ))}
@@ -1325,10 +1430,26 @@ export default function EditConfig({ section }) {
                       <input
                         value={m.desc}
                         onChange={(e) => { setConfig((prev) => { const c = structuredClone(prev); c.trustSection.mediaMentions[i].desc = e.target.value; return c }); setDirty(true) }}
-                        placeholder="e.g. Community-Powered Rescue..."
+                        placeholder="e.g. Wildlife Conservation Platform..."
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
                       />
                     </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Image</label>
+                    {m.image ? (
+                      <div className="flex items-center gap-3">
+                        <img src={m.image} alt="" className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
+                        <button onClick={() => updateMention(i, 'image', '')} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                      </div>
+                    ) : null}
+                    <label className={`mt-1 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 ${uploading?.section === 'mention' && uploading?.index === i ? 'pointer-events-none opacity-50' : ''}`}>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {uploading?.section === 'mention' && uploading?.index === i ? `${uploading.progress}%` : 'Upload Image'}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMentionImageUpload(i, f); e.target.value = '' }} />
+                    </label>
                   </div>
                 </div>
               ))}
@@ -1383,6 +1504,22 @@ export default function EditConfig({ section }) {
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
                       />
                     </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Image</label>
+                    {a.image ? (
+                      <div className="flex items-center gap-3">
+                        <img src={a.image} alt="" className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
+                        <button onClick={() => updateAward(i, 'image', '')} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                      </div>
+                    ) : null}
+                    <label className={`mt-1 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 ${uploading?.section === 'award' && uploading?.index === i ? 'pointer-events-none opacity-50' : ''}`}>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {uploading?.section === 'award' && uploading?.index === i ? `${uploading.progress}%` : 'Upload Image'}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleAwardImageUpload(i, f); e.target.value = '' }} />
+                    </label>
                   </div>
                 </div>
               ))}
@@ -1508,6 +1645,22 @@ export default function EditConfig({ section }) {
                           className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
                         />
                     </div>
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-medium text-gray-600">Image</label>
+                      {item.image ? (
+                        <div className="flex items-center gap-3">
+                          <img src={item.image} alt="" className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
+                          <button onClick={() => updateNewsItem(i, 'image', '')} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                        </div>
+                      ) : null}
+                      <label className={`mt-1 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 ${uploading?.section === 'news' && uploading?.index === i ? 'pointer-events-none opacity-50' : ''}`}>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {uploading?.section === 'news' && uploading?.index === i ? `${uploading.progress}%` : 'Upload Image'}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleNewsImageUpload(i, f); e.target.value = '' }} />
+                      </label>
+                    </div>
                   </div>
                   <button
                     onClick={() => removeNewsItem(i)}
@@ -1573,6 +1726,22 @@ export default function EditConfig({ section }) {
                           placeholder="Enter description"
                           className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
                         />
+                      </div>
+                      <div className="mt-3">
+                        <label className="mb-1 block text-xs font-medium text-gray-600">Image</label>
+                        {ev.image ? (
+                          <div className="flex items-center gap-3">
+                            <img src={ev.image} alt="" className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
+                            <button onClick={() => updateEvent(i, 'image', '')} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                          </div>
+                        ) : null}
+                        <label className={`mt-1 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 ${uploading?.section === 'event' && uploading?.index === i ? 'pointer-events-none opacity-50' : ''}`}>
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          {uploading?.section === 'event' && uploading?.index === i ? `${uploading.progress}%` : 'Upload Image'}
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEventImageUpload(i, f); e.target.value = '' }} />
+                        </label>
                       </div>
                     </div>
                     <button
@@ -1796,6 +1965,7 @@ function WildlifeGuideEditor({ config, setConfig, setDirty, uploading, setUpload
                               await new Promise((resolve, reject) => {
                                 const formData = new FormData()
                                 formData.append('image', f)
+                                formData.append('visibility', 'public')
                                 const xhr = new XMLHttpRequest()
                                 setUploading({ section: 'wildlifeGuide', index: i, progress: 0 })
                                 xhr.upload.onprogress = (ev) => {

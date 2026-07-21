@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { DoubleConfirmation, SkeletonTable } from '../../components/ui'
+import { SkeletonTable } from '../../components/ui'
 import { admin as adminApi } from '../../services/api'
 import NotificationBell from '../../components/admin/NotificationBell'
 import AuditLogs from './AuditLogs'
@@ -14,6 +14,7 @@ import AdminArchives from './AdminArchives'
 import DataExport from './DataExport'
 import SystemHealth from './SystemHealth'
 import RescuerMap from './RescuerMap'
+import AdminProfile from './Profile'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 
 const roleBadge = {
@@ -56,6 +57,7 @@ const tabLabels = {
   archive: 'Archives',
   exportData: 'Export',
   systemHealth: 'System Health',
+  profile: 'My Profile',
 }
 
 export default function Dashboard() {
@@ -71,7 +73,6 @@ export default function Dashboard() {
   const [chartPeriod, setChartPeriod] = useState('daily')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [updating, setUpdating] = useState(null)
   const [adminPermissions, setAdminPermissions] = useState(null)
 
   const fetchData = useCallback(async () => {
@@ -102,21 +103,6 @@ export default function Dashboard() {
     fetchData()
   }, [user, authLoading, navigate, fetchData])
 
-  async function handleRoleChange(uuid, newRole) {
-    try {
-      setUpdating(uuid)
-      await adminApi.updateUserRole(uuid, newRole)
-      const usersRes = await adminApi.getUsers()
-      setUsers(usersRes.users)
-      const statsRes = await adminApi.getStats()
-      setStats(statsRes.stats)
-    } catch (err) {
-      setError(err.message || 'Failed to update role')
-    } finally {
-      setUpdating(null)
-    }
-  }
-
   if (authLoading) return <LoadingScreen />
   if (loading && !users.length) {
     return <LoadingScreen />
@@ -143,6 +129,7 @@ export default function Dashboard() {
           onRefresh={fetchData}
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed((c) => !c)}
+          navigate={navigate}
         />
 
         <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-8">
@@ -172,9 +159,8 @@ export default function Dashboard() {
               <UsersTab
                 users={users}
                 currentUserUuid={user?.uuid}
-                updating={updating}
-                onRoleChange={handleRoleChange}
                 onRefresh={fetchData}
+                onCreateUser={fetchData}
               />
             )}
             {activeTab === 'audit' && <AuditLogs />}
@@ -188,6 +174,7 @@ export default function Dashboard() {
             {activeTab === 'exportData' && <DataExport />}
             {activeTab === 'systemHealth' && <SystemHealth />}
   {activeTab === 'rescuerMap' && <RescuerMap />}
+            {activeTab === 'profile' && <AdminProfile />}
 </FadeIn>
         </div>
       </main>
@@ -275,7 +262,6 @@ const configSubLinks = [
   { key: 'howItWorks', label: 'How It Works' },
   { key: 'successStories', label: 'Success Stories' },
   { key: 'gallery', label: 'Gallery' },
-  { key: 'volunteer', label: 'Volunteer' },
   { key: 'partners', label: 'Partners' },
   { key: 'location', label: 'Location' },
   { key: 'newsEvents', label: 'News & Events' },
@@ -431,7 +417,7 @@ function Sidebar({ collapsed, onToggle, activeTab, onTabChange, user, logout, na
   )
 }
 
-function TopBar({ title, user, onRefresh, sidebarCollapsed, onToggleSidebar }) {
+function TopBar({ title, user, onRefresh, sidebarCollapsed, onToggleSidebar, navigate }) {
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-6 shadow-sm">
       <button
@@ -462,9 +448,13 @@ function TopBar({ title, user, onRefresh, sidebarCollapsed, onToggleSidebar }) {
         </button>
 
         <div className="flex items-center gap-2.5 border-l border-gray-200 pl-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 text-xs font-bold text-white shadow-sm">
+          <button
+            onClick={() => navigate?.('/admin/dashboard/profile')}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 text-xs font-bold text-white shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2"
+            title="My Profile"
+          >
             {user?.firstName?.[0]}{user?.lastName?.[0]}
-          </div>
+          </button>
           <span className="hidden text-sm font-medium text-gray-700 sm:block">
             {user?.firstName} {user?.lastName}
           </span>
@@ -660,19 +650,49 @@ function DashboardTab({ stats, dashData, chartPeriod, onChartPeriodChange, userN
   )
 }
 
-function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh }) {
-  const [openDropdown, setOpenDropdown] = useState(null)
-  const [pendingRoleChange, setPendingRoleChange] = useState(null)
+function UsersTab({ users, currentUserUuid, onRefresh, onCreateUser }) {
+  const [passwordUser, setPasswordUser] = useState(null)
+  const [passwordValue, setPasswordValue] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [passwordUpdating, setPasswordUpdating] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createForm, setCreateForm] = useState({ firstName: '', lastName: '', email: '', phoneNumber: '', password: '' })
+  const [createPhoneError, setCreatePhoneError] = useState('')
+  const [createLoading, setCreateLoading] = useState(false)
+  const [createError, setCreateError] = useState('')
 
-  function handleRoleClick(uuid, role) {
-    setOpenDropdown(null)
-    setPendingRoleChange({ uuid, role })
+  async function handleCreateUser(e) {
+    e.preventDefault()
+    setCreateError('')
+    setCreatePhoneError('')
+    const phone = createForm.phoneNumber
+    if (!phone || phone.length !== 10) {
+      setCreatePhoneError('Number must be exactly 10 digits')
+      setCreateLoading(false)
+      return
+    }
+    if (phone[0] !== '9') {
+      setCreatePhoneError('Number must start with 9')
+      setCreateLoading(false)
+      return
+    }
+    setCreateLoading(true)
+    try {
+      await adminApi.createUser({ ...createForm, phoneNumber: '+63' + phone })
+      setShowCreateModal(false)
+      setCreateForm({ firstName: '', lastName: '', email: '', phoneNumber: '', password: '' })
+      setCreatePhoneError('')
+      onCreateUser()
+    } catch (err) {
+      setCreateError(err.errors?.map((e) => e.message).join(', ') || err.message || 'Failed to create user.')
+    } finally {
+      setCreateLoading(false)
+    }
   }
-
-  const roles = [
-    { value: 'rescuer', label: 'Rescuer' },
-    { value: 'admin', label: 'Admin' },
-  ]
 
   return (
     <div className="space-y-6">
@@ -681,12 +701,23 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh })
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Users</h1>
           <p className="mt-1 text-sm text-gray-500">Manage all registered users and their roles.</p>
         </div>
-        <button onClick={onRefresh} className="flex items-center gap-2 rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow active:scale-95">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 rounded-lg bg-green-700 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-green-800 active:scale-95"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create Account
+          </button>
+          <button onClick={onRefresh} className="flex items-center gap-2 rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-600 shadow-sm transition-all hover:bg-gray-50 hover:shadow active:scale-95">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -703,8 +734,6 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh })
           <tbody className="divide-y divide-gray-100">
             {users.map((u) => {
               const isOwn = currentUserUuid === u.uuid
-              const isUpdating = updating === u.uuid
-              const isOpen = openDropdown === u.uuid
               return (
                 <tr key={u.uuid} className="transition-colors hover:bg-gray-50/50">
                   <td className="whitespace-nowrap px-6 py-4">
@@ -724,53 +753,14 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh })
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right">
                     <div className="relative flex items-center justify-end">
-                      {isUpdating && (
-                        <svg className="mr-2 h-4 w-4 animate-spin text-green-600" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      )}
                       <button
-                        disabled={isOwn || isUpdating}
-                        onClick={() => setOpenDropdown(isOpen ? null : u.uuid)}
-                        className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                        onClick={() => { setPasswordUser(u); setPasswordValue(''); setCurrentPassword(''); setPasswordError(''); setPasswordConfirmOpen(false) }}
+                        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium shadow-sm transition-all hover:bg-gray-50 active:scale-95 ${
+                          isOwn ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100' : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                        }`}
                       >
-                        {isOwn ? 'You' : 'Change Role'}
-                        <svg className={`h-3.5 w-3.5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                        {isOwn ? 'Change My Password' : 'Change Password'}
                       </button>
-                      {isOpen && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => setOpenDropdown(null)} />
-                          <div className="absolute right-0 top-full z-20 mt-1 w-40 origin-top-right rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                            {roles.map((r) => {
-                              const isActive = u.role === r.value
-                              return (
-                                <button
-                                  key={r.value}
-                                  disabled={isActive || isUpdating}
-                                  onClick={() => {
-                                    if (!isActive) handleRoleClick(u.uuid, r.value)
-                                  }}
-                                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                                    isActive
-                                      ? 'bg-green-50 font-medium text-green-700'
-                                      : 'text-gray-700 hover:bg-gray-50'
-                                  } disabled:cursor-not-allowed disabled:opacity-50`}
-                                >
-                                  {isActive && (
-                                    <svg className="h-3.5 w-3.5 shrink-0 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  )}
-                                  <span className={isActive ? '' : 'ml-5'}>{r.label}</span>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -785,34 +775,225 @@ function UsersTab({ users, currentUserUuid, updating, onRoleChange, onRefresh })
         </table>
       </div>
 
-      {pendingRoleChange && (
+      {passwordUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-gray-900">Change User Role</h3>
+          <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Change Password</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Are you sure you want to change this user's role to <strong>{pendingRoleChange.role}</strong>?
+              Setting new password for <strong>{passwordUser.firstName} {passwordUser.lastName}</strong>
+            </p>
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              setPasswordError('')
+              if (passwordValue.length < 8) { setPasswordError('Password must be at least 8 characters.'); return }
+              const isOwn = passwordUser.uuid === currentUserUuid
+              if (isOwn && !currentPassword) { setPasswordError('Current password is required.'); return }
+              setPasswordConfirmOpen(true)
+            }} className="mt-4 space-y-4">
+              {passwordError && (
+                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{passwordError}</div>
+              )}
+              {passwordUser.uuid === currentUserUuid && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                  <div className="relative mt-1">
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'} required
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                    />
+                    <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showCurrentPassword ? (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">New Password</label>
+                <div className="relative mt-1">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'} required minLength={8}
+                    value={passwordValue}
+                    onChange={(e) => setPasswordValue(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  />
+                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showNewPassword ? (
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <button type="button" onClick={() => { setPasswordUser(null); setPasswordValue(''); setCurrentPassword(''); setPasswordError(''); setPasswordConfirmOpen(false) }}
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={passwordUpdating}
+                  className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-800 disabled:opacity-50">
+                  {passwordUpdating ? 'Saving...' : 'Save Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {passwordConfirmOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30">
+          <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Confirm Password Change</h3>
+            <p className="mt-2 text-sm text-gray-500">
+              Are you sure you want to change the password for <strong>{passwordUser.firstName} {passwordUser.lastName}</strong>?
             </p>
             <div className="mt-6 flex items-center justify-end gap-3">
               <button
-                onClick={() => setPendingRoleChange(null)}
+                onClick={() => setPasswordConfirmOpen(false)}
                 className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
               >
                 Cancel
               </button>
-              <DoubleConfirmation
-                onConfirm={() => {
-                  onRoleChange(pendingRoleChange.uuid, pendingRoleChange.role)
-                  setPendingRoleChange(null)
+              <button
+                onClick={async () => {
+                  setPasswordError('')
+                  setPasswordUpdating(true)
+                  setPasswordConfirmOpen(false)
+                  try {
+                    await adminApi.updatePassword(passwordUser.uuid, passwordValue, currentPassword || undefined)
+                    setPasswordUser(null)
+                    setPasswordValue('')
+                    setCurrentPassword('')
+                  } catch (err) {
+                    setPasswordError(err.message || 'Failed to update password.')
+                    setPasswordUpdating(false)
+                  } finally {
+                    setPasswordUpdating(false)
+                  }
                 }}
-                title="Confirm Role Change"
-                message={`This will change the user's role to ${pendingRoleChange.role}. Are you sure?`}
-                confirmText={`Yes, Change to ${pendingRoleChange.role}`}
+                className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-800"
               >
-                <button className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700">
-                  Confirm Change
-                </button>
-              </DoubleConfirmation>
+                {passwordUpdating ? 'Saving...' : 'Confirm'}
+              </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowCreateModal(false)}>
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Create Rescuer Account</h3>
+              <button onClick={() => setShowCreateModal(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <form onSubmit={handleCreateUser} className="mt-5 space-y-4">
+              {createError && (
+                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{createError}</div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">First Name</label>
+                  <input
+                    type="text" required
+                    value={createForm.firstName}
+                    onChange={(e) => setCreateForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    type="text" required
+                    value={createForm.lastName}
+                    onChange={(e) => setCreateForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email" required
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                <div className="mt-1 flex">
+                  <span className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 px-3 text-sm text-gray-600">+63</span>
+                  <input
+                    type="tel" required
+                    inputMode="numeric"
+                    value={createForm.phoneNumber}
+                    onBeforeInput={(e) => { if (e.data && /\D/.test(e.data)) e.preventDefault() }}
+                    onPaste={(e) => {
+                      const text = (e.clipboardData || window.clipboardData).getData('text')
+                      if (text && /\D/.test(text)) e.preventDefault()
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      setCreateForm((prev) => ({ ...prev, phoneNumber: val }))
+                      if (val.length > 0 && val[0] !== '9') {
+                        setCreatePhoneError('Number must start with 9')
+                      } else if (val.length > 0 && val.length < 10) {
+                        setCreatePhoneError('Number must be exactly 10 digits')
+                      } else {
+                        setCreatePhoneError('')
+                      }
+                    }}
+                    className="block w-full rounded-r-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                    placeholder="9XX XXX XXXX"
+                  />
+                </div>
+                {createPhoneError && <p className="mt-1 text-xs text-red-500">{createPhoneError}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <input
+                  type="password" required minLength={8}
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, password: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createLoading}
+                  className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-800 disabled:opacity-50"
+                >
+                  {createLoading ? 'Creating...' : 'Create Account'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

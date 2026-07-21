@@ -84,7 +84,7 @@ export function LocationProvider({ children }) {
   }, [])
 
   return (
-    <LocationContext.Provider value={{ userPos, locError, distance, routePath, routeInfo, routeLoading, requestLocation }}>
+    <LocationContext.Provider value={{ userPos, locError, distance, routePath, routeInfo, routeLoading, requestLocation, fetchRoute }}>
       {children}
     </LocationContext.Provider>
   )

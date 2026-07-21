@@ -78,7 +78,6 @@ const register = async (req, res) => {
   const token = jwt.sign(
     { uuid: userUuid, email, role: "rescuer" },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" },
   );
 
   await logEvent({ req, userId: userUuid, eventType: "register", metadata: { email, role: "rescuer" } });
@@ -87,7 +86,7 @@ const register = async (req, res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
     path: "/",
   });
 
@@ -97,27 +96,35 @@ const register = async (req, res) => {
   });
 };
 
+function normalizePhone(input) {
+  const digits = input.replace(/\D/g, "");
+  if (digits.startsWith("63") && digits.length === 12) return "+" + digits;
+  if (digits.startsWith("0") && digits.length === 11) return "+63" + digits.slice(1);
+  if (digits.length === 10 && digits.startsWith("9")) return "+63" + digits;
+  return "+" + digits;
+}
+
 const login = async (req, res) => {
   const { email, password } = req.body;
-  const trimmedEmail = email.trim();
-  const emailKey = trimmedEmail.toLowerCase();
+  const trimmed = email.trim();
+  const isPhone = !trimmed.includes("@") && /^[\d\s+\-()]{7,20}$/.test(trimmed);
 
-  const failKey = `login:${emailKey}`;
+  const identifier = isPhone ? normalizePhone(trimmed) : trimmed.toLowerCase();
+
+  const failKey = `login:${identifier}`;
   const attempts = failedAttempts.get(failKey) || 0;
   if (attempts >= 5) {
     throw new AppError("Account temporarily locked. Try again later.", 429);
   }
 
-  let user = await convexClient.query(anyApi.users.getUserByEmail, { email: trimmedEmail });
-
-  if (!user) {
-    user = await convexClient.query(anyApi.users.getUserByEmail, { email: emailKey });
-  }
+  const user = isPhone
+    ? await convexClient.query(anyApi.users.getUserByPhoneNumber, { phoneNumber: identifier })
+    : await convexClient.query(anyApi.users.getUserByEmail, { email: identifier });
 
   if (!user) {
     failedAttempts.set(failKey, attempts + 1);
     setTimeout(() => { const c = failedAttempts.get(failKey); if (c && c <= attempts + 1) failedAttempts.delete(failKey); }, 15 * 60 * 1000);
-    await logEvent({ req, eventType: "login_attempt", metadata: { email: trimmedEmail, reason: "user_not_found" } });
+    await logEvent({ req, eventType: "login_attempt", metadata: { [isPhone ? "phone" : "email"]: identifier, reason: "user_not_found" } });
     throw new AppError("Invalid email or password.", 401);
   }
 
@@ -125,7 +132,7 @@ const login = async (req, res) => {
   if (!isMatch) {
     failedAttempts.set(failKey, attempts + 1);
     setTimeout(() => { const c = failedAttempts.get(failKey); if (c && c <= attempts + 1) failedAttempts.delete(failKey); }, 15 * 60 * 1000);
-    await logEvent({ req, eventType: "login_attempt", metadata: { email: trimmedEmail, reason: "wrong_password" } });
+    await logEvent({ req, eventType: "login_attempt", metadata: { [isPhone ? "phone" : "email"]: identifier, reason: "wrong_password" } });
     throw new AppError("Invalid email or password.", 401);
   }
 
@@ -134,7 +141,6 @@ const login = async (req, res) => {
   const token = jwt.sign(
     { uuid: user.uuid, email: user.email, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" },
   );
 
   await logEvent({ req, userId: user.uuid, eventType: "login", metadata: { email: user.email, role: user.role } });
@@ -143,7 +149,7 @@ const login = async (req, res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
     path: "/",
   });
 

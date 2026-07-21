@@ -13,6 +13,7 @@ const GALLERY_COLORS = [
 
 export default function Gallery({ title, subtitle, images }) {
   const [selected, setSelected] = useState(null)
+  const [lightbox, setLightbox] = useState(null)
 
   if (!images.length) return null
 
@@ -51,16 +52,17 @@ export default function Gallery({ title, subtitle, images }) {
         </div>
       </div>
 
-      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title={selected?.title || 'Photo'} size="4xl">
+      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title={selected?.title || 'Photo'} size="lg">
         {selected && (
           <div className="space-y-5">
             {selected.image ? (
-              <img src={selected.image} alt="" className="aspect-video w-full rounded-xl object-cover" />
+              <div className="relative">
+                <img src={selected.image} alt="" onClick={() => setLightbox(selected.image)} className="w-full rounded-xl border border-gray-200 object-cover max-h-64 cursor-pointer" />
+                <span className="absolute bottom-2 right-2 rounded bg-black/50 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">Click to expand</span>
+              </div>
             ) : (
-              <div className={`aspect-video w-full rounded-xl bg-gradient-to-br ${GALLERY_COLORS[0].from} ${GALLERY_COLORS[0].to}`}>
-                <div className="flex h-full items-end rounded-xl bg-black/20 p-6">
-                  <p className="text-lg font-semibold text-white">{selected.title}</p>
-                </div>
+              <div className="w-full rounded-xl bg-gradient-to-br from-emerald-500 to-green-700 p-6">
+                <p className="text-lg font-semibold text-white">{selected.title}</p>
               </div>
             )}
             <p className="text-sm leading-relaxed text-gray-500">{selected.desc}</p>
@@ -68,6 +70,23 @@ export default function Gallery({ title, subtitle, images }) {
           </div>
         )}
       </Modal>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 cursor-pointer"
+          onClick={() => setLightbox(null)}
+        >
+          <img src={lightbox} alt="" className="max-h-full max-w-full rounded-xl object-contain" onClick={(e) => e.stopPropagation()} />
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 transition-colors"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </section>
   )
 }

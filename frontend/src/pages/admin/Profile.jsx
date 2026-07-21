@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { rescuer as rescuerApi } from '../../services/api'
+import { admin as adminApi } from '../../services/api'
 import { DoubleConfirmation } from '../../components/ui'
-import { CheckIcon, XIcon } from '../../components/SvgIcons'
 
-export default function RescuerProfile() {
+export default function AdminProfile() {
   const { user, updateUser } = useAuth()
   const [firstName, setFirstName] = useState(user?.firstName || '')
   const [lastName, setLastName] = useState(user?.lastName || '')
@@ -21,7 +20,7 @@ export default function RescuerProfile() {
     }
     setSaving(true)
     try {
-      const result = await rescuerApi.updateProfile({ firstName, lastName, email, phoneNumber: '+63' + phoneDigits })
+      const result = await adminApi.updateProfile({ firstName, lastName, email, phoneNumber: '+63' + phoneDigits })
       updateUser(result.user)
       setMessage({ type: 'success', text: 'Profile saved successfully!' })
     } catch (err) {
@@ -49,15 +48,23 @@ export default function RescuerProfile() {
               ? 'bg-green-100 text-green-800 border-green-300'
               : 'bg-red-100 text-red-800 border-red-300'
           }`}>
-            <span>{message.type === 'success' ? <CheckIcon className="w-6 h-6" /> : <XIcon className="w-6 h-6" />}</span>
+            <span>{message.type === 'success' ? (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}</span>
             {message.text}
           </div>
         )}
 
         <div className="rounded-2xl border-2 border-gray-200 bg-white overflow-hidden shadow">
-          <div className="bg-amber-600 px-6 py-10 text-center">
+          <div className="bg-gradient-to-r from-green-700 to-emerald-600 px-6 py-10 text-center">
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white/20 text-4xl font-bold text-white shadow-lg ring-4 ring-white/50">
-              {initials || 'R'}
+              {initials || 'A'}
             </div>
             <h2 className="mt-4 text-2xl font-bold text-white">{user.firstName} {user.lastName}</h2>
             <p className="text-lg text-white/90">{user.email}</p>
@@ -71,7 +78,7 @@ export default function RescuerProfile() {
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full rounded-xl border-2 border-gray-300 px-5 py-3.5 text-lg focus:border-amber-600 focus:outline-none focus:ring-4 focus:ring-amber-100 transition-all"
+                  className="w-full rounded-xl border-2 border-gray-300 px-5 py-3.5 text-lg focus:border-green-600 focus:outline-none focus:ring-4 focus:ring-green-100 transition-all"
                 />
               </div>
               <div>
@@ -80,7 +87,7 @@ export default function RescuerProfile() {
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="w-full rounded-xl border-2 border-gray-300 px-5 py-3.5 text-lg focus:border-amber-600 focus:outline-none focus:ring-4 focus:ring-amber-100 transition-all"
+                  className="w-full rounded-xl border-2 border-gray-300 px-5 py-3.5 text-lg focus:border-green-600 focus:outline-none focus:ring-4 focus:ring-green-100 transition-all"
                 />
               </div>
             </div>
@@ -90,8 +97,7 @@ export default function RescuerProfile() {
               <div className="flex">
                 <span className="inline-flex items-center rounded-l-xl border-2 border-r-0 border-gray-200 bg-gray-100 px-4 text-base font-bold text-gray-600">+63</span>
                 <input
-                  type="tel"
-                  inputMode="numeric"
+                  type="tel" inputMode="numeric"
                   value={phoneDigits}
                   onBeforeInput={(e) => { if (e.data && /\D/.test(e.data)) e.preventDefault() }}
                   onPaste={(e) => {
@@ -100,7 +106,7 @@ export default function RescuerProfile() {
                   }}
                   onChange={(e) => setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="9XX XXX XXXX"
-                  className="block w-full rounded-r-xl border-2 border-gray-200 bg-gray-50 px-4 py-3.5 text-base font-semibold text-gray-900 outline-none transition-all focus:border-amber-600 focus:bg-white focus:ring-4 focus:ring-amber-100"
+                  className="block w-full rounded-r-xl border-2 border-gray-200 bg-gray-50 px-4 py-3.5 text-base font-semibold text-gray-900 outline-none transition-all focus:border-green-600 focus:bg-white focus:ring-4 focus:ring-green-100"
                 />
               </div>
             </div>
@@ -111,7 +117,7 @@ export default function RescuerProfile() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border-2 border-gray-300 px-5 py-3.5 text-lg focus:border-amber-600 focus:outline-none focus:ring-4 focus:ring-amber-100 transition-all"
+                className="w-full rounded-xl border-2 border-gray-300 px-5 py-3.5 text-lg focus:border-green-600 focus:outline-none focus:ring-4 focus:ring-green-100 transition-all"
               />
             </div>
 
@@ -128,7 +134,7 @@ export default function RescuerProfile() {
                 <button
                   type="button"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-8 py-3.5 text-lg font-bold text-white shadow transition-all hover:bg-amber-700 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-green-700 px-8 py-3.5 text-lg font-bold text-white shadow transition-all hover:bg-green-800 disabled:opacity-50"
                 >
                   {saving ? (
                     <span className="flex items-center gap-2">

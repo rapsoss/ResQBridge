@@ -49,7 +49,7 @@ const registerRules = [
 ];
 
 const loginRules = [
-  body("email").trim().isEmail().withMessage("Valid email is required."),
+  body("email").trim().notEmpty().withMessage("Email or phone number is required."),
   body("password").notEmpty().withMessage("Password is required."),
 ];
 
@@ -69,7 +69,28 @@ const resetPasswordRules = [
 ];
 router.post("/reset-password", csrfCheck, resetPasswordRules, validate, asyncHandler(resetPassword));
 
-router.get("/google", passport.authenticate("google", { session: false }));
-router.get("/google/callback", passport.authenticate("google", { session: false, failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=sso_failed` }), ssoCallback);
+router.get("/google", (req, res, next) => {
+  if (!passport._strategies.google) {
+    console.error("[SSO] Google strategy not configured — missing GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET");
+    return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/v1/login?error=sso_failed`);
+  }
+  passport.authenticate("google", { session: false })(req, res, next);
+});
+router.get("/google/callback", (req, res, next) => {
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/v1/login?error=sso_failed`,
+  }, (err, user, info) => {
+    if (err) {
+      console.error("[SSO] Passport error:", err);
+      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/v1/login?error=sso_failed`);
+    }
+    if (!user) {
+      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/v1/login?error=sso_failed`);
+    }
+    req.user = user;
+    next();
+  })(req, res, next);
+}, ssoCallback);
 
 module.exports = router;
