@@ -2,26 +2,26 @@ import AnimateIn from '../../components/ui/AnimateIn'
 
 const features = [
   {
-    title: 'Report in Seconds',
-    desc: 'Submit lost or found animal reports with photos, location, and details in under a minute.',
+    title: 'Wildlife Reports',
+    desc: 'Submit wildlife sighting, illegal possession, or human-wildlife conflict reports with photos and location.',
     svg: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z',
     bg: 'from-emerald-500 to-green-600',
   },
   {
-    title: 'Community Alerts',
-    desc: 'Get notified when a lost or injured wildlife is spotted nearby or a found animal matches your report.',
-    svg: 'M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0',
-    bg: 'from-amber-400 to-orange-500',
-  },
-  {
-    title: 'Smart Matching',
-    desc: 'Our system automatically connects lost reports with found animals in the same area.',
-    svg: 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z',
+    title: 'Wildlife Guide',
+    desc: 'Browse species profiles with conservation status, active periods, habitat, hazards, and safety notes.',
+    svg: 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25',
     bg: 'from-blue-500 to-indigo-600',
   },
   {
+    title: 'Photo Evidence',
+    desc: 'Attach up to 5 photos per report to help responders assess the situation accurately.',
+    svg: 'M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z',
+    bg: 'from-amber-400 to-orange-500',
+  },
+  {
     title: 'Rescue Tools',
-    desc: 'For responders: mapping, team coordination, and case management all in one place.',
+    desc: 'Live tracking, assignment management, and route navigation for rescue response teams.',
     svg: 'M11.42 15.17l-5.645 3.254a1.5 1.5 0 01-2.275-1.28v-7.29a1.5 1.5 0 012.275-1.28l5.645 3.254m5.645-3.254l5.645-3.255a1.5 1.5 0 012.275 1.28v7.29a1.5 1.5 0 01-2.275 1.28l-5.645-3.254m0 0l-5.645 3.254',
     bg: 'from-teal-500 to-cyan-600',
   },
@@ -48,10 +48,10 @@ export default function StatsSection({ stats }) {
 
         <AnimateIn delay={200}>
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            Community-Powered Rescue
+            Wildlife Rescue Network
           </h2>
           <p className="mt-1 max-w-2xl text-base leading-relaxed text-gray-400">
-            From the moment an animal goes missing to the joy of a safe return, ResQBridge connects every piece of the rescue puzzle.
+            From the moment a wild animal goes missing to the joy of a safe return, ResQBridge connects every piece of the rescue puzzle.
           </p>
         </AnimateIn>
 

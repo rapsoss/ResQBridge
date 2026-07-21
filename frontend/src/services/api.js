@@ -15,10 +15,31 @@ async function request(endpoint, options = {}) {
   }
 
   const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers, credentials: 'include' })
-  const data = await res.json()
+
+  const contentType = res.headers.get('content-type')
+  let data
+
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await res.json()
+    } catch {
+      data = null
+    }
+  } else {
+    const text = await res.text()
+    if (!res.ok) {
+      throw new ApiError(
+        res.status === 429
+          ? 'Too many attempts. Please try again later.'
+          : `Server error (${res.status})`,
+        res.status
+      )
+    }
+    throw new ApiError(text || 'Empty response from server', res.status)
+  }
 
   if (!res.ok) {
-    throw new ApiError(data.message || 'Something went wrong', res.status, data.errors)
+    throw new ApiError(data?.message || 'Something went wrong', res.status, data?.errors)
   }
 
   return data
@@ -54,6 +75,16 @@ export const admin = {
     request(`/admin/users/${uuid}/role`, {
       method: 'PATCH',
       body: JSON.stringify({ role }),
+    }),
+  createUser: (body) =>
+    request('/admin/users/create', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updatePassword: (uuid, password, currentPassword) =>
+    request(`/admin/users/${uuid}/password`, {
+      method: 'PATCH',
+      body: JSON.stringify({ password, ...(currentPassword ? { currentPassword } : {}) }),
     }),
   getStats: () => request('/admin/stats'),
 
@@ -127,6 +158,11 @@ export const admin = {
       method: 'PUT',
       body: JSON.stringify(permissions),
     }),
+  updateProfile: (body) =>
+    request('/admin/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
 }
 
 export const rescuer = {
@@ -185,12 +221,9 @@ export const rescuer = {
       body: JSON.stringify({ items }),
     }),
 
-  getVoiceNotes: (reportId) => request(`/rescuer/reports/${reportId}/voice-notes`),
-  addVoiceNote: (reportId, audioUrl, duration) =>
-    request('/rescuer/voice-notes', {
-      method: 'POST',
-      body: JSON.stringify({ reportId, audioUrl, duration }),
-    }),
+  getNotifications: () => request('/rescuer/notifications'),
+  markAllNotificationsRead: () =>
+    request('/rescuer/notifications/read-all', { method: 'POST' }),
 }
 
 export const logs = {

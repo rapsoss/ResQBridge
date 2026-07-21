@@ -43,6 +43,7 @@ const LANDING_DEFAULTS = {
   contact: {
     emergencyHotline: "+63 (48) 123-4567",
     phone: "+63 (48) 434-1234",
+    telephone: "",
     email: "rescue@palawanwildlife.org",
     address: "Irawan, Puerto Princesa City, Palawan 5300, Philippines",
     hours: "Monday – Sunday, 8:00 AM – 5:00 PM",
@@ -50,7 +51,6 @@ const LANDING_DEFAULTS = {
   faq: [
     { q: "How do I report a wildlife emergency?", a: "Call our 24/7 hotline at +63 (48) 123-4567 or use the Report an Animal button on our homepage." },
     { q: "What should I do if I find an injured animal?", a: "Keep your distance, observe from a safe spot, and call our rescue hotline immediately." },
-    { q: "Can I volunteer at the rescue center?", a: "Yes. We welcome volunteers for animal care, clean-up drives, and community education programs." },
     { q: "How are donated funds used?", a: "Donations go directly toward veterinary supplies, animal feed, facility maintenance, and community conservation programs." },
     { q: "Do you accept drop-off donations?", a: "Yes. In-kind donations can be dropped off during operating hours at our Irawan center." },
   ],
@@ -68,7 +68,6 @@ const LANDING_DEFAULTS = {
   howItWorks: { title: "", subtitle: "", steps: [] },
   successStories: { title: "", subtitle: "", stories: [] },
   gallery: { title: "", subtitle: "", images: [] },
-  volunteer: { title: "", subtitle: "", roles: [], requirements: [], cta: { label: "", link: "" } },
   partners: { title: "", subtitle: "", partners: [] },
   newsEvents: {
     title: "News & Events",
@@ -76,7 +75,20 @@ const LANDING_DEFAULTS = {
     news: [],
     events: [],
   },
-  trustSection: { title: "", subtitle: "", mediaMentions: [], awards: [] },
+  trustSection: {
+    title: "",
+    subtitle: "",
+    mediaMentions: [
+      { name: 'Wildlife Daily', logo: 'WD', desc: 'Wildlife Conservation Platform of the Year', image: '' },
+      { name: 'Eco Times', logo: 'ET', desc: 'Featured as top innovator in wildlife conservation', image: '' },
+      { name: 'Palawan News', logo: 'PN', desc: 'ResQBridge connects rescuers and citizens island-wide', image: '' },
+    ],
+    awards: [
+      { title: 'Best Conservation Tech', year: '2025', org: 'ASEAN Biodiversity', image: '' },
+      { title: 'Community Impact Award', year: '2025', org: 'Wildlife Rescue Alliance', image: '' },
+      { title: 'Innovation in Rescue', year: '2024', org: 'Palawan Council', image: '' },
+    ],
+  },
   wildlifeGuide: [
     { name: 'Philippine Eagle', scientificName: 'Pithecophaga jefferyi', status: 'Critically Endangered', activeStatus: 'Day', habitat: 'Forest canopies', note: 'Report sightings immediately — do not approach.', images: [], hazard: '' },
     { name: 'Palawan Bearcat', scientificName: 'Arctictis binturong', status: 'Vulnerable', activeStatus: 'Night', habitat: 'Lowland forests', note: 'Nocturnal and shy. If found during daytime, it may be sick.', images: [], hazard: '' },
@@ -110,10 +122,20 @@ const getLandingConfig = async (_req, res) => {
     howItWorks: { ...LANDING_DEFAULTS.howItWorks, ...(stored.howItWorks || {}) },
     successStories: { ...LANDING_DEFAULTS.successStories, ...(stored.successStories || {}) },
     gallery: { ...LANDING_DEFAULTS.gallery, ...(stored.gallery || {}) },
-    volunteer: { ...LANDING_DEFAULTS.volunteer, ...(stored.volunteer || {}) },
     partners: { ...LANDING_DEFAULTS.partners, ...(stored.partners || {}) },
     newsEvents: { ...LANDING_DEFAULTS.newsEvents, ...(stored.newsEvents || {}) },
-    trustSection: { ...LANDING_DEFAULTS.trustSection, ...(stored.trustSection || {}) },
+    trustSection: {
+      ...LANDING_DEFAULTS.trustSection,
+      ...(stored.trustSection || {}),
+      mediaMentions: (stored.trustSection?.mediaMentions?.length
+        ? stored.trustSection.mediaMentions
+        : LANDING_DEFAULTS.trustSection.mediaMentions
+      ),
+      awards: (stored.trustSection?.awards?.length
+        ? stored.trustSection.awards
+        : LANDING_DEFAULTS.trustSection.awards
+      ),
+    },
     wildlifeGuide: (stored.wildlifeGuide || LANDING_DEFAULTS.wildlifeGuide).map((s) => ({
       ...s,
       images: s.images || (s.image ? [s.image] : []),
@@ -128,7 +150,7 @@ const getLandingConfig = async (_req, res) => {
 const ALLOWED_SECTION_KEYS = new Set([
   "about", "hero", "contact", "faq", "carousel",
   "location", "newsEvents", "howItWorks", "successStories", "gallery",
-  "volunteer", "partners", "wildlifeGuide", "trustSection",
+  "partners", "wildlifeGuide", "trustSection",
 ]);
 
 const updateLandingConfig = async (req, res) => {

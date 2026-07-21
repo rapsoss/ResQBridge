@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLocationContext } from '../../context/LocationContext'
 import { DoubleConfirmation, SkeletonCard, Modal } from '../../components/ui'
@@ -59,6 +60,7 @@ function getDistanceInfo(userPos, lat, lng) {
 export default function RescuerAssignments() {
   const { user } = useAuth()
   const { userPos, requestLocation } = useLocationContext()
+  const location = useLocation()
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -79,10 +81,6 @@ export default function RescuerAssignments() {
   const pageSize = 10
 
   const [checklists, setChecklists] = useState({})
-  const [voiceNotes, setVoiceNotes] = useState({})
-  const [recordingId, setRecordingId] = useState(null)
-  const [audioBlobs, setAudioBlobs] = useState({})
-  const mediaRecorderRef = useRef(null)
 
   const EQUIPMENT_ITEMS = [
     'First Aid Kit', 'Stretcher / Carrier', 'Capture Net', 'Gloves',
@@ -107,56 +105,6 @@ export default function RescuerAssignments() {
     })
   }
 
-  async function loadVoiceNotes(reportId) {
-    if (voiceNotes[reportId] !== undefined) return
-    try {
-      const data = await rescuerApi.getVoiceNotes(reportId)
-      setVoiceNotes((prev) => ({ ...prev, [reportId]: data.notes || [] }))
-    } catch {}
-  }
-
-  async function startRecording(reportId) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mr = new MediaRecorder(stream)
-      const chunks = []
-      mr.ondataavailable = (e) => chunks.push(e.data)
-      mr.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' })
-        const url = URL.createObjectURL(blob)
-        setAudioBlobs((prev) => ({ ...prev, [reportId]: url }))
-        setRecordingId(null)
-        stream.getTracks().forEach((t) => t.stop())
-      }
-      mediaRecorderRef.current = mr
-      mr.start()
-      setRecordingId(reportId)
-    } catch { alert('Microphone access denied.') }
-  }
-
-  function stopRecording() {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-    }
-  }
-
-  async function submitVoiceNote(reportId) {
-    const blob = audioBlobs[reportId]
-    if (!blob) return
-    try {
-      const formData = new FormData()
-      formData.append('image', blob, `voice-${reportId}.webm`)
-      const res = await fetch('/api/v1/rescuer/upload', { method: 'POST', credentials: 'include', body: formData })
-      const data = await res.json()
-      if (data.url) {
-        await rescuerApi.addVoiceNote(reportId, data.url)
-        const notes = await rescuerApi.getVoiceNotes(reportId)
-        setVoiceNotes((prev) => ({ ...prev, [reportId]: notes.notes || [] }))
-        setAudioBlobs((prev) => { const copy = { ...prev }; delete copy[reportId]; return copy })
-      }
-    } catch { alert('Failed to upload voice note.') }
-  }
-
   const fetchReports = useCallback(() => {
     if (!user) return
     setLoading(true)
@@ -178,6 +126,17 @@ export default function RescuerAssignments() {
   }, [user, filter])
 
   useEffect(() => { setPage(1); fetchReports() }, [user, filter])
+
+  useEffect(() => {
+    const reportId = location.state?.reportId
+    if (!reportId || reports.length === 0) return
+    const match = reports.find((r) => r._id === reportId)
+    if (match) {
+      setSelectedReport(match)
+      loadChecklist(reportId)
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state?.reportId, reports])
 
   useEffect(() => {
     let es
@@ -309,7 +268,7 @@ export default function RescuerAssignments() {
   const paginatedReports = reports.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   return (
-    <main className="flex-1 overflow-y-auto p-6 md:p-8">
+    <main className="flex-1 overflow-y-auto p-3 md:p-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -368,7 +327,8 @@ export default function RescuerAssignments() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-2xl border-2 border-gray-200 bg-white shadow-sm">
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto rounded-2xl border-2 border-gray-200 bg-white shadow-sm">
               <table className="w-full text-left text-sm">
                 <thead className="border-b-2 border-gray-200 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-500">
                   <tr>
@@ -390,7 +350,7 @@ export default function RescuerAssignments() {
                     return (
                       <tr
                         key={r._id}
-                        onClick={() => { setSelectedReport(r); loadChecklist(r._id); loadVoiceNotes(r._id) }}
+                        onClick={() => { setSelectedReport(r); loadChecklist(r._id) }}
                         className="cursor-pointer transition-colors hover:bg-amber-50"
                       >
                         <td className="px-5 py-4">
@@ -425,6 +385,48 @@ export default function RescuerAssignments() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="block md:hidden space-y-3">
+              {paginatedReports.map((r) => {
+                const urgency = URGENCY_LABEL[r.urgency] || URGENCY_LABEL.low
+                const badgeKey = statusBadgeKey(r.status)
+                const badgeClass = BADGES[badgeKey] || BADGES.new
+                const badgeLabel = BADGE_LABELS[badgeKey]
+                const Icon = CATEGORY_ICONS[r.category] || ClipboardIcon
+                const distInfo = getDistanceInfo(userPos, r.latitude, r.longitude)
+
+                return (
+                  <div
+                    key={r._id}
+                    onClick={() => { setSelectedReport(r); loadChecklist(r._id) }}
+                    className="rounded-xl border-2 border-gray-200 bg-white p-4 cursor-pointer transition-colors hover:border-amber-300 active:bg-amber-50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Icon className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-gray-900 text-sm">{r.name}</span>
+                          <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${badgeClass}`}>
+                            {badgeLabel}
+                          </span>
+                          <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${urgency.class}`}>
+                            {urgency.label}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1 truncate">{r.location}</p>
+                        {distInfo && (
+                          <p className="text-xs text-gray-400 mt-0.5">{distInfo.dist.toFixed(1)} km · {distInfo.min} min</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                        {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             <Modal
@@ -480,7 +482,7 @@ export default function RescuerAssignments() {
                       </div>
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Animal</p>
-                        <p className="mt-0.5 font-semibold text-gray-900">{r.animalType}</p>
+                        <p className="mt-0.5 font-semibold text-gray-900">{r.animalType}{r.quantity ? ` \u00d7 ${r.quantity}` : ''}</p>
                       </div>
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Location</p>

@@ -20,7 +20,7 @@ function configureSSO() {
     try {
       const email = profile.emails?.[0]?.value;
       if (!email) {
-        return done(new Error("No email returned from Google."), null);
+        return done(null, false);
       }
 
       const existingUser = await convexClient.query(anyApi.users.getUserByEmail, { email });
@@ -56,7 +56,8 @@ function configureSSO() {
         isNew: true,
       });
     } catch (err) {
-      return done(err, null);
+      console.error("[SSO] Error during Google OAuth:", err);
+      return done(null, false);
     }
   }));
 }

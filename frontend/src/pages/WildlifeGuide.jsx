@@ -10,6 +10,13 @@ const STATUS_ORDER = {
   'Vulnerable': 3,
 }
 
+function firstTwoSentences(text) {
+  if (!text) return ''
+  const parts = text.split(/(?<=[.!?])\s+/)
+  if (parts.length <= 2) return text
+  return parts.slice(0, 2).join(' ')
+}
+
 export default function WildlifeGuide() {
   const [animals, setAnimals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -183,12 +190,14 @@ export default function WildlifeGuide() {
                 )}
               </div>
               <p className="mt-2 text-xs text-gray-400">{a.habitat}</p>
-              <div className="relative mt-1">
-                <p className="text-xs leading-relaxed text-gray-500 line-clamp-2">{a.note}</p>
-                {a.note && a.note.length > 80 && (
-                  <span className="absolute bottom-0 right-0 bg-gradient-to-l from-white via-white to-transparent pl-6 text-[10px] font-medium text-green-600">See more</span>
-                )}
-              </div>
+              {a.note && (
+                <p className="mt-2 text-xs leading-relaxed text-gray-500">
+                  {firstTwoSentences(a.note)}
+                  {a.note.split(/(?<=[.!?])\s+/).length > 2 && (
+                    <span className="text-green-600 font-medium"> ... see more</span>
+                  )}
+                </p>
+              )}
             </button>
           ))}
         </div>

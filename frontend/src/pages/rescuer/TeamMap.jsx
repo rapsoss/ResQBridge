@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { GoogleMap, Marker, InfoWindow, useLoadScript } from '@react-google-maps/api'
 import { useAuth } from '../../context/AuthContext'
 import { useLocationContext } from '../../context/LocationContext'
@@ -14,17 +14,6 @@ const containerStyle = { width: '100%', height: '100%' }
 
 const DEFAULT_CENTER = { lat: 9.799447, lng: 118.693766 }
 
-function icon(g, scale, fillColor) {
-  return {
-    path: g.maps.SymbolPath.CIRCLE,
-    scale,
-    fillColor,
-    fillOpacity: 1,
-    strokeColor: '#fff',
-    strokeWeight: 4,
-  }
-}
-
 export default function TeamMap() {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   const { user } = useAuth()
@@ -32,12 +21,27 @@ export default function TeamMap() {
   const [rescuers, setRescuers] = useState([])
   const [selected, setSelected] = useState(null)
   const [mapLoaded, setMapLoaded] = useState(false)
-  const center = userPos || { lat: 9.799447, lng: 118.693766 }
+  const mapRef = useRef(null)
+  const centerRef = useRef(userPos || DEFAULT_CENTER)
+  if (userPos && !mapRef.current) {
+    centerRef.current = userPos
+  }
 
   const { isLoaded, loadError } = useLoadScript({ googleMapsApiKey: apiKey })
   const mapsFailed = loadError || (isLoaded && !window.google?.maps?.version)
+  const [mapTimedOut, setMapTimedOut] = useState(false)
+  const readyRef = useRef(false)
+
+  useEffect(() => {
+    if (mapsFailed) return
+    const timer = setTimeout(() => {
+      if (!readyRef.current) setMapTimedOut(true)
+    }, 8000)
+    return () => clearTimeout(timer)
+  }, [mapsFailed])
 
   const onMapLoad = useCallback(() => {
+    readyRef.current = true
     if (window.google?.maps?.version) setMapLoaded(true)
   }, [])
 
@@ -53,16 +57,16 @@ export default function TeamMap() {
   const online = rescuers.filter((r) => r.userId !== user?.uuid).length
 
   return (
-    <main className="flex-1 overflow-y-auto p-6 md:p-8">
+    <main className="flex-1 overflow-y-auto p-3 md:p-8">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Team Map</h1>
           <p className="mt-1 text-lg text-gray-500">
-            {loadError || mapsFailed ? 'Google Maps is unavailable' : `See other rescuers in your area (${online} online)`}
+            {loadError || mapsFailed || mapTimedOut ? 'Google Maps is unavailable' : `See other rescuers in your area (${online} online)`}
           </p>
         </div>
-        <div className={`rounded-xl overflow-hidden border-2 ${loadError || mapsFailed ? 'bg-red-50 border-red-200' : 'border-gray-200'}`} style={{ height: '70vh' }}>
-          {loadError || mapsFailed ? (
+        <div className={`rounded-xl overflow-hidden border-2 ${loadError || mapsFailed || mapTimedOut ? 'bg-red-50 border-red-200' : 'border-gray-200'}`} style={{ height: 'min(70vh, 500px)' }}>
+          {loadError || mapsFailed || mapTimedOut ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <p className="text-lg font-semibold text-red-700">Map service unavailable</p>
@@ -74,7 +78,7 @@ export default function TeamMap() {
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-600 border-t-transparent" />
             </div>
           ) : (
-            <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={12} onLoad={onMapLoad}>
+            <GoogleMap mapContainerStyle={containerStyle} center={centerRef.current} zoom={12} onLoad={(map) => { mapRef.current = map; onMapLoad() }}>
               {mapLoaded && (
                 <>
                   {userPos && (

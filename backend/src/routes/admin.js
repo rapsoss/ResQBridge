@@ -4,7 +4,7 @@ const router = express.Router();
 const { authenticate, authorize, authorizeWithPermission } = require("../middleware/auth");
 const { validate } = require("../middleware/validate");
 const { asyncHandler } = require("../middleware/errorHandler");
-const { getUsers, getUser, updateUserRole, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport } = require("../controllers/adminController");
+const { getUsers, getUser, updateUserRole, createUser, updatePassword, getStats, getAdminReports, assignReport, getRescuerLocations, getRescuerReports, archiveReport, bulkArchiveReports, unarchiveReport, getArchivedReports, deleteReport, updateAdminProfile } = require("../controllers/adminController");
 const { getLogs, getLogStats, getLogsByIP, deleteOldLogs } = require("../controllers/logController");
 const { getDashboardData } = require("../controllers/dashboardController");
 const { getConfig, updateConfig, getLandingConfig, updateLandingConfig } = require("../controllers/configController");
@@ -31,6 +31,21 @@ const updateRoleRules = [
   body("role").trim().notEmpty().withMessage("Role is required."),
 ];
 router.patch("/users/:uuid/role", authorizeWithPermission("users", "write"), uuidParam, updateRoleRules, validate, asyncHandler(updateUserRole));
+
+const updatePasswordRules = [
+  body("password").trim().isLength({ min: 8 }).withMessage("Password must be at least 8 characters."),
+  body("currentPassword").optional({ values: "falsy" }).trim(),
+];
+router.patch("/users/:uuid/password", authorizeWithPermission("users", "write"), uuidParam, updatePasswordRules, validate, asyncHandler(updatePassword));
+
+const createUserRules = [
+  body("firstName").trim().notEmpty().isLength({ max: 50 }).matches(/^[a-zA-Z\s'-]+$/).withMessage("Invalid first name."),
+  body("lastName").trim().notEmpty().isLength({ max: 50 }).matches(/^[a-zA-Z\s'-]+$/).withMessage("Invalid last name."),
+  body("email").trim().normalizeEmail().isEmail().withMessage("Valid email is required."),
+  body("phoneNumber").trim().notEmpty().matches(/^\+?\d{7,15}$/).withMessage("Valid phone number is required."),
+  body("password").trim().isLength({ min: 8 }).withMessage("Password must be at least 8 characters."),
+];
+router.post("/users/create", authorizeWithPermission("users", "write"), createUserRules, validate, asyncHandler(createUser));
 
 router.get("/logs", authorizeWithPermission("audit"), asyncHandler(getLogs));
 router.get("/logs/stats", authorizeWithPermission("audit"), asyncHandler(getLogStats));
@@ -61,6 +76,14 @@ router.get("/export/users", authorizeWithPermission("exportData"), asyncHandler(
 router.get("/export/logs", authorizeWithPermission("exportData"), asyncHandler(exportLogs));
 
 router.get("/health", authorizeWithPermission("systemHealth"), asyncHandler(getHealth));
+
+const profileRules = [
+  body("firstName").optional().trim().isLength({ max: 50 }).matches(/^[a-zA-Z\s'-]+$/).withMessage("First name contains invalid characters."),
+  body("lastName").optional().trim().isLength({ max: 50 }).matches(/^[a-zA-Z\s'-]+$/).withMessage("Last name contains invalid characters."),
+  body("phoneNumber").trim().notEmpty().withMessage("Phone number is required.").matches(/^\+?\d{7,15}$/).withMessage("Valid phone number is required (7-15 digits)."),
+  body("email").optional().trim().isEmail().normalizeEmail().withMessage("Valid email is required."),
+];
+router.patch("/profile", adminOnly, profileRules, validate, asyncHandler(updateAdminProfile));
 
 router.get("/notifications", asyncHandler(getNotifications));
 router.get("/notifications/unread-count", asyncHandler(getUnreadCount));

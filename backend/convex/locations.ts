@@ -18,6 +18,7 @@ export const updateRescuerLocation = mutation({
       return await ctx.db.patch(existing._id, {
         latitude: args.latitude,
         longitude: args.longitude,
+        userName: args.userName,
         updatedAt: Date.now(),
       });
     }
