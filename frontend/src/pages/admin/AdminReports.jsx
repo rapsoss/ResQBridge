@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { DoubleConfirmation, Modal, SkeletonCard } from '../../components/ui'
 import { admin as adminApi } from '../../services/api'
@@ -62,17 +62,44 @@ export default function AdminReports({ adminPermissions }) {
     }
   }, [location.state])
 
+  const fetchReports = useCallback(async () => {
+    try {
+      const data = await adminApi.getReports()
+      setReports(data.reports || [])
+    } catch {}
+  }, [])
+
   useEffect(() => {
     Promise.allSettled([
-      adminApi.getReports(),
+      fetchReports(),
       adminApi.getUsers(),
       adminApi.getRescuerLocations(),
-    ]).then(([reportRes, userRes, locRes]) => {
-      if (reportRes.status === 'fulfilled') setReports(reportRes.value.reports || [])
+    ]).then(([, userRes, locRes]) => {
       if (userRes.status === 'fulfilled') setUsers((userRes.value.users || []).filter((u) => u.role === 'rescuer'))
       if (locRes.status === 'fulfilled') setLocations(locRes.value.locations || [])
     }).finally(() => setLoading(false))
-  }, [])
+  }, [fetchReports])
+
+  useEffect(() => {
+    let es
+    function connect() {
+      es = new EventSource('/api/v1/report/updates', { withCredentials: true })
+      es.onmessage = (e) => {
+        try {
+          const event = JSON.parse(e.data)
+          if (event.type === 'report:new' || event.type === 'report:claimed' || event.type === 'report:status') {
+            fetchReports()
+          }
+        } catch {}
+      }
+      es.onerror = () => {
+        es.close()
+        setTimeout(connect, 3000)
+      }
+    }
+    connect()
+    return () => { if (es) es.close() }
+  }, [fetchReports])
 
   function getRescuerStatus(uuid) {
     const activeReport = reports.find(

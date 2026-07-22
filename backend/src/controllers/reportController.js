@@ -3,6 +3,7 @@ const convexClient = require("../config/convex");
 const { anyApi } = require("convex/server");
 const { logEvent } = require("../middleware/logAudit");
 const { notifyAdmin } = require("../services/adminNotification");
+const { publish } = require("../services/notification");
 const { uploadToCloudinary } = require("./uploadController");
 const { v4: uuidv4 } = require("uuid");
 
@@ -91,6 +92,8 @@ const submitReport = async (req, res) => {
     reportId,
     link: "/admin/dashboard/reports",
   });
+
+  publish({ type: "report:new", reportId, animalType, location, name: name || "Anonymous" });
 
   res.status(201).json({ message: "Report submitted successfully.", imageCount: imagePublicIds.length });
 } catch (err) {
