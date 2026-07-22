@@ -292,3 +292,13 @@ export const updateReportImages = mutation({
     await ctx.db.patch(args.reportId, { images: args.images });
   },
 });
+
+export const updateReportRescuerImages = mutation({
+  args: {
+    reportId: v.id("reports"),
+    rescuerImages: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.reportId, { rescuerImages: args.rescuerImages });
+  },
+});

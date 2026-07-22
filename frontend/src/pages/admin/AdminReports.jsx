@@ -359,13 +359,19 @@ export default function AdminReports({ adminPermissions }) {
                       </div>
                     )}
 
-                    {r.images && r.images.length > 0 && (
+                    {((r.images && r.images.length > 0) || (r.rescuerImages && r.rescuerImages.length > 0)) && (
                       <div className="mt-3">
                         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Photos</p>
                         <div className="flex flex-wrap gap-2">
-                          {r.images.map((img, i) => (
-                            <a key={i} href={img} target="_blank" rel="noopener noreferrer"
-                              className="group relative overflow-hidden rounded-lg border border-gray-200">
+                          {r.images?.map((img, i) => (
+                            <a key={`rep-${i}`} href={img} target="_blank" rel="noopener noreferrer"
+                              className="group relative overflow-hidden rounded-lg border border-blue-200">
+                              <img src={img} alt="" className="h-16 w-24 object-cover transition group-hover:scale-105" />
+                            </a>
+                          ))}
+                          {r.rescuerImages?.map((img, i) => (
+                            <a key={`res-${i}`} href={img} target="_blank" rel="noopener noreferrer"
+                              className="group relative overflow-hidden rounded-lg border border-green-200">
                               <img src={img} alt="" className="h-16 w-24 object-cover transition group-hover:scale-105" />
                             </a>
                           ))}

@@ -245,15 +245,16 @@ export default function RescuerAssignments() {
         body: formData,
         credentials: 'include',
       })
-      const data = await res.json()
-      if (data.url) {
-        const displayUrl = data.signedUrl || data.url
-        setUploadedImages((prev) => ({
-          ...prev,
-          [reportId]: [...(prev[reportId] || []), displayUrl],
-        }))
-        rescuerApi.saveReportImages(reportId, [data.url]).catch(() => {})
-      }
+    const data = await res.json()
+    if (data.url) {
+      const displayUrl = data.signedUrl || data.url
+      const publicId = data.url
+      setUploadedImages((prev) => ({
+        ...prev,
+        [reportId]: [...(prev[reportId] || []), { url: displayUrl, publicId }],
+      }))
+      rescuerApi.saveReportImages(reportId, [publicId]).catch(() => {})
+    }
     } catch { alert('Failed to upload image.') }
     finally { setUploadingId(null) }
   }
@@ -442,7 +443,10 @@ export default function RescuerAssignments() {
                 const showInitial = !isAccepted && r.status !== 'en_route' && r.status !== 'in_progress' && r.status !== 'resolved' && r.status !== 'failed'
                 const showEnRoute = !showInitial && !hasArrived && (isAccepted || r.status === 'en_route')
                 const showPostArrival = hasArrived
-                const reportImages = [...new Set([...(r.images || []), ...(uploadedImages[r._id] || [])])]
+                const reporterImages = r.images || []
+                const rescuerSavedImages = r.rescuerImages || []
+                const rescuerPendingImages = (uploadedImages[r._id] || []).map((u) => u.url)
+                const allRescuerImages = [...new Set([...rescuerSavedImages, ...rescuerPendingImages])]
 
                 const distInfo = getDistanceInfo(userPos, r.latitude, r.longitude)
                 const isNearSite = distInfo && distInfo.dist <= 0.05
@@ -682,20 +686,33 @@ export default function RescuerAssignments() {
                                 Uploading...
                               </div>
                             )}
-                            {reportImages.length > 0 && (
-                              <div className="flex flex-wrap gap-2">
-                                {reportImages.map((url, i) => (
-                                  <div key={i} className="relative group">
-                                    <img src={url} alt={`Photo ${i + 1}`} className="h-20 w-20 rounded-xl object-cover border-2 border-gray-200" />
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveImage(r._id, url)}
-                                      className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow"
-                                    >
-                                      &times;
-                                    </button>
-                                  </div>
-                                ))}
+                            {reporterImages.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">Reporter Photos</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {reporterImages.map((url, i) => (
+                                    <img key={`rep-${i}`} src={url} alt="" className="h-20 w-20 rounded-xl object-cover border-2 border-blue-200" />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {allRescuerImages.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">My Photos</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {allRescuerImages.map((url, i) => (
+                                    <div key={`res-${i}`} className="relative group">
+                                      <img src={url} alt="" className="h-20 w-20 rounded-xl object-cover border-2 border-green-200" />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveImage(r._id, url)}
+                                        className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow"
+                                      >
+                                        &times;
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             )}
                             <div className="flex flex-wrap gap-2">

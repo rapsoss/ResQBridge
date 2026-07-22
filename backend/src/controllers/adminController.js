@@ -148,6 +148,7 @@ const getAdminReports = async (req, res) => {
     location: r.location,
     description: r.description,
     images: r.images ? resolveImageUrls(r.images) : [],
+    rescuerImages: r.rescuerImages ? resolveImageUrls(r.rescuerImages) : [],
     status: STATUS_MAP[r.status] || r.status,
     assignedTo: r.assignedRescuerEmail || r.assignedTo || null,
     assignedUser: r.assignedUser || null,
@@ -155,13 +156,6 @@ const getAdminReports = async (req, res) => {
     longitude: r.longitude ?? null,
     createdAt: r.createdAt,
   }));
-  const withImages = mapped.filter(r => r.images.length > 0)
-  if (withImages.length > 0) {
-    console.log("[adminReports] reports with images:", withImages.length, "first:", withImages[0].images)
-  } else {
-    const withRaw = reports.filter(r => r.images)
-    console.log("[adminReports] reports with raw images field:", withRaw.length, "samples:", withRaw.slice(0,3).map(r => ({ id: r._id, images: r.images })))
-  }
   res.json({ reports: mapped });
 };
 

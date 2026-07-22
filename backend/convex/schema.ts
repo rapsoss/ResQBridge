@@ -57,6 +57,7 @@ export default defineSchema({
     location: v.string(),
     description: v.optional(v.string()),
     images: v.optional(v.string()),
+    rescuerImages: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     urgency: v.optional(v.string()),

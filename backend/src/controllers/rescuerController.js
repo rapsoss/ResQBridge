@@ -65,6 +65,7 @@ const getReports = async (req, res) => {
     location: r.location,
     description: r.description,
     images: r.images ? resolveImageUrls(r.images) : [],
+    rescuerImages: r.rescuerImages ? resolveImageUrls(r.rescuerImages) : [],
     status: RESCUER_STATUS_MAP[r.status] || r.status,
     assignedTo: r.assignedTo || null,
     latitude: r.latitude ?? null,
@@ -361,11 +362,13 @@ const removeImage = async (req, res) => {
     return res.status(404).json({ message: "Report not found." });
   }
 
-  const existing = report.images ? report.images.split(",").filter(Boolean) : [];
-  const filtered = existing.filter((img) => img !== imageUrl);
-  await convexClient.mutation(anyApi.reports.updateReportImages, {
+  const target = imageUrl.startsWith('http') ? imageUrl.replace(/^https?:\/\/[^\/]+\/image\/authenticated\/[^\/]+\/v1\//, '') : imageUrl;
+
+  const existing = report.rescuerImages ? report.rescuerImages.split(",").filter(Boolean) : [];
+  const filtered = existing.filter((img) => img !== imageUrl && img !== target);
+  await convexClient.mutation(anyApi.reports.updateReportRescuerImages, {
     reportId: id,
-    images: filtered.join(","),
+    rescuerImages: filtered.join(","),
   });
 
   res.json({ message: "Image removed." });
@@ -384,13 +387,12 @@ const saveImages = async (req, res) => {
     return res.status(404).json({ message: "Report not found." });
   }
 
-  const existing = report.images ? report.images.split(",").filter(Boolean) : [];
+  const existing = report.rescuerImages ? report.rescuerImages.split(",").filter(Boolean) : [];
   const merged = [...existing, ...images];
   const stored = merged.join(",");
-  console.log("[saveImages] existing:", existing, "new:", images, "stored:", stored);
-  await convexClient.mutation(anyApi.reports.updateReportImages, {
+  await convexClient.mutation(anyApi.reports.updateReportRescuerImages, {
     reportId: id,
-    images: stored,
+    rescuerImages: stored,
   });
 
   res.json({ message: "Images saved." });
