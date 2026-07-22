@@ -369,7 +369,10 @@ export default function RescuerAssignments() {
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <Icon className="w-5 h-5 text-gray-500 shrink-0" />
-                            <span className="font-semibold text-gray-900">{r.name}</span>
+                            <div>
+                              <span className="font-semibold text-gray-900">{r.animalType}{r.quantity ? ` \u00d7 ${r.quantity}` : ''}</span>
+                              <p className="text-xs text-gray-400">{r.name}</p>
+                            </div>
                           </div>
                         </td>
                         <td className="px-5 py-4 text-gray-600 max-w-[200px] truncate">
@@ -410,15 +413,16 @@ export default function RescuerAssignments() {
                     onClick={() => { setSelectedReport(r); loadChecklist(r._id) }}
                     className="rounded-xl border-2 border-gray-200 bg-white p-4 cursor-pointer transition-colors hover:border-amber-300 active:bg-amber-50"
                   >
-                    <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-3">
                       <Icon className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-semibold text-gray-900 text-sm">{r.name}</span>
+                          <span className="font-semibold text-gray-900 text-sm">{r.animalType}{r.quantity ? ` \u00d7 ${r.quantity}` : ''}</span>
                           <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${badgeClass}`}>
                             {badgeLabel}
                           </span>
                         </div>
+                        <p className="text-xs text-gray-400 mt-0.5">{r.name}</p>
                         <p className="text-sm text-gray-600 mt-1 truncate">{r.location}</p>
                         {distInfo && (
                           <p className="text-xs text-gray-400 mt-0.5">{distInfo.dist.toFixed(1)} km · {distInfo.min} min</p>
