@@ -176,7 +176,7 @@ export default function RescuerLayout() {
               }`}
             >
               <span className={`h-3 w-3 rounded-full ${availability === 'available' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
-              {availability === 'available' ? 'Available' : 'Busy'}
+              {availability === 'available' ? 'Available' : 'Not Available'}
             </button>
           </div>
         </div>

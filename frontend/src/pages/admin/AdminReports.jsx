@@ -17,7 +17,7 @@ const STATUS_BADGE = {
 
 const STATUS_LABELS = {
   pending: 'Pending', assigned: 'Assigned', en_route: 'En Route',
-  in_progress: 'Working', transport_to_pwrccc: 'Transport to PWRCCC',
+  in_progress: 'In Progress',
   resolved: 'Successful', failed: 'Failed',
 }
 
@@ -107,9 +107,11 @@ export default function AdminReports({ adminPermissions }) {
     )
     if (activeReport) {
       if (activeReport.status === 'en_route') return { label: 'En Route', color: 'text-blue-700' }
-      if (activeReport.status === 'in_progress') return { label: 'Busy', color: 'text-red-700' }
-      return { label: 'Busy', color: 'text-red-700' }
+      if (activeReport.status === 'in_progress') return { label: 'In Progress', color: 'text-purple-700' }
+      return { label: 'Assigned', color: 'text-indigo-700' }
     }
+    const user = users.find((u) => u.uuid === uuid)
+    if (user?.availability === 'busy') return { label: 'Not Available', color: 'text-red-700' }
     const loc = locations.find((l) => l.userId === uuid)
     const isActive = loc && Date.now() - new Date(loc.updatedAt).getTime() < 120000
     if (isActive) return { label: 'Active', color: 'text-green-700' }
@@ -174,7 +176,7 @@ export default function AdminReports({ adminPermissions }) {
             { key: 'pending', label: 'Pending' },
             { key: 'assigned', label: 'Assigned' },
             { key: 'en_route', label: 'En Route' },
-            { key: 'in_progress', label: 'Working' },
+            { key: 'in_progress', label: 'In Progress' },
             { key: 'resolved', label: 'Successful' },
             { key: 'failed', label: 'Failed' },
           ].map((s) => (
