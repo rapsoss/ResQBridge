@@ -59,6 +59,7 @@ export default defineSchema({
     images: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    urgency: v.optional(v.string()),
     status: v.union(
       v.literal("pending"),
       v.literal("assigned"),
