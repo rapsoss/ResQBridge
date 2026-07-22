@@ -4,11 +4,6 @@ import { useAuth } from '../../context/AuthContext'
 import { rescuer as rescuerApi } from '../../services/api'
 import { MedicalIcon, StrandedIcon, SearchIcon, PawIcon, HouseIcon, ClipboardIcon } from '../../components/SvgIcons'
 
-const URGENCY_LABEL = {
-  low: { label: 'Low', class: 'bg-gray-100 text-gray-700' },
-  high: { label: 'High', class: 'bg-red-100 text-red-800 font-bold' },
-}
-
 const STATUS_BADGE = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
   in_progress: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -215,9 +210,6 @@ export default function RescuerDashboard() {
                         <span className="text-sm md:text-lg font-bold text-gray-900">{r.name}</span>
                         <span className={`rounded-full border px-1.5 md:px-3 py-0.5 text-[10px] md:text-sm font-semibold ${STATUS_BADGE[r.status] || ''}`}>
                           {r.status.replace('_', ' ')}
-                        </span>
-                        <span className={`rounded-full px-1.5 md:px-3 py-0.5 text-[10px] md:text-sm font-semibold ${URGENCY_LABEL[r.urgency]?.class || 'bg-gray-100 text-gray-700'}`}>
-                          {URGENCY_LABEL[r.urgency]?.label || r.urgency}
                         </span>
                       </div>
                       <p className="mt-0.5 md:mt-1 text-sm md:text-base text-gray-600 truncate">

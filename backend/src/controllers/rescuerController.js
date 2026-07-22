@@ -62,7 +62,6 @@ const getReports = async (req, res) => {
     phone: r.phone || "",
     category: r.category || "other",
     animalType: r.animalName || r.animalType,
-    urgency: r.urgency || "medium",
     location: r.location,
     description: r.description,
     images: r.images ? resolveImageUrls(r.images) : [],
@@ -232,7 +231,6 @@ const getStats = async (req, res) => {
     name: r.reporterEmail || "Anonymous",
     category: r.category || "other",
     animalType: r.animalName || r.animalType,
-    urgency: r.urgency || "medium",
     status: RESCUER_STATUS_MAP[r.status] || r.status,
     location: r.location,
     createdAt: r.createdAt,
@@ -258,7 +256,7 @@ const getStats = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-  const { firstName, lastName, phoneNumber, email } = req.body;
+  const { firstName, lastName, phoneNumber, email, organization } = req.body;
   const userId = req.user.uuid;
 
   if (email) {
@@ -274,6 +272,7 @@ const updateProfile = async (req, res) => {
     lastName: lastName || undefined,
     phoneNumber: phoneNumber || undefined,
     email: email ? email.toLowerCase().trim() : undefined,
+    organization: organization || undefined,
   });
 
   await logEvent({
@@ -349,6 +348,52 @@ const getNotes = async (req, res) => {
   res.json({ notes });
 };
 
+const removeImage = async (req, res) => {
+  const { id } = req.params;
+  const { imageUrl } = req.body;
+
+  if (!imageUrl) {
+    return res.status(400).json({ message: "imageUrl is required." });
+  }
+
+  const report = await convexClient.query(anyApi.reports.getReport, { reportId: id });
+  if (!report) {
+    return res.status(404).json({ message: "Report not found." });
+  }
+
+  const existing = report.images ? report.images.split(",").filter(Boolean) : [];
+  const filtered = existing.filter((img) => img !== imageUrl);
+  await convexClient.mutation(anyApi.reports.updateReportImages, {
+    reportId: id,
+    images: filtered.join(","),
+  });
+
+  res.json({ message: "Image removed." });
+};
+
+const saveImages = async (req, res) => {
+  const { id } = req.params;
+  const { images } = req.body;
+
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    return res.status(400).json({ message: "images array is required." });
+  }
+
+  const report = await convexClient.query(anyApi.reports.getReport, { reportId: id });
+  if (!report) {
+    return res.status(404).json({ message: "Report not found." });
+  }
+
+  const existing = report.images ? report.images.split(",").filter(Boolean) : [];
+  const merged = [...existing, ...images];
+  await convexClient.mutation(anyApi.reports.updateReportImages, {
+    reportId: id,
+    images: merged.join(","),
+  });
+
+  res.json({ message: "Images saved." });
+};
+
 const getNotifications = async (req, res) => {
   const userId = req.user.uuid;
   const limit = parseInt(req.query.limit, 10) || 50;
@@ -368,6 +413,12 @@ const markAllNotificationsRead = async (req, res) => {
   res.json({ message: "All notifications marked as read." });
 };
 
+const markNotificationRead = async (req, res) => {
+  const { id } = req.params;
+  await convexClient.mutation(anyApi.rescuerNotifications.markAsRead, { id });
+  res.json({ message: "Notification marked as read." });
+};
+
 module.exports = {
   getReports,
   updateReportStatus,
@@ -377,8 +428,11 @@ module.exports = {
   updateAvailability,
   addNote,
   getNotes,
+  saveImages,
+  removeImage,
   updateLocation,
   rejectAssignment,
   getNotifications,
   markAllNotificationsRead,
+  markNotificationRead,
 };

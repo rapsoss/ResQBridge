@@ -27,6 +27,7 @@ export default defineSchema({
       v.literal("available"),
       v.literal("busy"),
     )),
+    organization: v.optional(v.string()),
   })
     .index("by_email", ["email"])
     .index("by_uuid", ["uuid"])
@@ -52,7 +53,6 @@ export default defineSchema({
     phone: v.string(),
     category: v.string(),
     animalType: v.string(),
-    urgency: v.string(),
     quantity: v.optional(v.number()),
     location: v.string(),
     description: v.optional(v.string()),

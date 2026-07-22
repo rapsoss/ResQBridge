@@ -56,7 +56,7 @@ const navItems = [
 export default function RescuerLayout() {
   const { user, loading: authLoading, logout } = useAuth()
   const { userPos, requestLocation } = useLocationContext()
-  const { notifications, unreadCount, markAllRead, fetchNotifications } = useNotifications()
+  const { notifications, unreadCount, markAllRead, markRead, fetchNotifications } = useNotifications()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -119,7 +119,7 @@ export default function RescuerLayout() {
 
   function handleLogout() {
     logout()
-    navigate('/')
+    navigate('/v1/login')
   }
 
   if (authLoading) return null
@@ -278,6 +278,7 @@ export default function RescuerLayout() {
                 <div
                   key={n._id}
                   onClick={() => {
+                    if (!n.read) markRead(n._id)
                     navigate('/rescuer/assignments', { state: { reportId: n.reportId }, replace: true })
                     setNotifOpen(false)
                   }}

@@ -49,7 +49,6 @@ export const createReport = mutation({
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     reporterEmail: v.string(),
-    urgency: v.string(),
   },
   handler: async (ctx, args) => {
     const reportId = await ctx.db.insert("reports", {
@@ -57,7 +56,6 @@ export const createReport = mutation({
       phone: "",
       category: "other",
       animalType: args.animalName,
-      urgency: args.urgency,
       location: args.location,
       description: args.description,
       latitude: args.latitude,
@@ -80,7 +78,6 @@ export const insertReport = mutation({
     phone: v.string(),
     category: v.string(),
     animalType: v.string(),
-    urgency: v.string(),
     quantity: v.optional(v.number()),
     location: v.string(),
     description: v.optional(v.string()),
@@ -96,7 +93,6 @@ export const insertReport = mutation({
       phone: args.phone,
       category: args.category,
       animalType: args.animalType,
-      urgency: args.urgency,
       quantity: args.quantity,
       location: args.location,
       description: args.description,
@@ -282,5 +278,15 @@ export const deleteReport = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.reportId);
+  },
+});
+
+export const updateReportImages = mutation({
+  args: {
+    reportId: v.id("reports"),
+    images: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.reportId, { images: args.images });
   },
 });

@@ -73,6 +73,7 @@ const register = async (req, res) => {
     email,
     password: hashedPassword,
     role: "rescuer",
+    organization: req.body.organization || undefined,
   });
 
   const token = jwt.sign(
@@ -92,7 +93,7 @@ const register = async (req, res) => {
 
   res.status(201).json({
     message: "User registered successfully.",
-    user: { uuid: userUuid, firstName, lastName, email, role: "rescuer" },
+    user: { uuid: userUuid, firstName, lastName, email, role: "rescuer", phoneNumber, organization: req.body.organization || null },
   });
 };
 
@@ -160,7 +161,9 @@ const login = async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
+      phoneNumber: user.phoneNumber,
       role: user.role,
+      organization: user.organization || null,
     },
   });
 };
@@ -170,19 +173,21 @@ const forgotPassword = async (req, res) => {
 
   const user = await convexClient.query(anyApi.users.getUserByEmail, { email });
 
-  if (user) {
-    const resetToken = jwt.sign(
-      { uuid: user.uuid, email: user.email, type: "password-reset" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" },
-    );
-
-    await sendPasswordReset(email, resetToken);
-
-    await logEvent({ req, userId: user.uuid, eventType: "password_reset", metadata: { email } });
+  if (!user) {
+    return res.status(404).json({ message: "No account found with that email address." });
   }
 
-  res.json({ message: "If an account with that email exists, a reset link has been sent." });
+  const resetToken = jwt.sign(
+    { uuid: user.uuid, email: user.email, type: "password-reset" },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" },
+  );
+
+  await sendPasswordReset(email, resetToken);
+
+  await logEvent({ req, userId: user.uuid, eventType: "password_reset", metadata: { email } });
+
+  res.json({ message: "A reset link has been sent to your email." });
 };
 
 const resetPassword = async (req, res) => {
@@ -191,8 +196,8 @@ const resetPassword = async (req, res) => {
   if (!token || !password) {
     throw new AppError("Token and password are required.", 400);
   }
-  if (password.length < 6) {
-    throw new AppError("Password must be at least 6 characters.", 400);
+  if (password.length < 8) {
+    throw new AppError("Password must be at least 8 characters.", 400);
   }
 
   let decoded;

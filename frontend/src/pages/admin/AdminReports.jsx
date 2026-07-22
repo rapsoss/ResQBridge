@@ -4,11 +4,6 @@ import { admin as adminApi } from '../../services/api'
 import { MedicalIcon, StrandedIcon, SearchIcon, PawIcon, HouseIcon, ClipboardIcon } from '../../components/SvgIcons'
 import ReportMap from '../rescuer/ReportMap'
 
-const URGENCY_LABEL = {
-  low: { label: 'Low', class: 'bg-gray-100 text-gray-700' },
-  high: { label: 'High', class: 'bg-red-100 text-red-800 font-bold' },
-}
-
 const STATUS_BADGE = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
   assigned: 'bg-indigo-100 text-indigo-800 border-indigo-300',
@@ -51,6 +46,8 @@ export default function AdminReports({ adminPermissions }) {
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [bulkArchiving, setBulkArchiving] = useState(false)
   const [assignTarget, setAssignTarget] = useState({})
+  const [notes, setNotes] = useState({})
+  const [notesLoading, setNotesLoading] = useState({})
   const pageSize = 10
 
   useEffect(() => {
@@ -94,6 +91,16 @@ export default function AdminReports({ adminPermissions }) {
     }
   }
 
+  async function fetchNotes(reportId) {
+    if (notes[reportId]) return
+    setNotesLoading((prev) => ({ ...prev, [reportId]: true }))
+    try {
+      const data = await adminApi.getReportNotes(reportId)
+      setNotes((prev) => ({ ...prev, [reportId]: data.notes || [] }))
+    } catch {}
+    finally { setNotesLoading((prev) => ({ ...prev, [reportId]: false })) }
+  }
+
   const filtered = reports
     .filter((r) => !filter || r.status === filter)
     .filter((r) => {
@@ -106,10 +113,6 @@ export default function AdminReports({ adminPermissions }) {
     })
     .sort((a, b) => {
       if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt)
-      if (sortBy === 'urgency') {
-        const order = { high: 0, low: 1 }
-        return (order[a.urgency] ?? 3) - (order[b.urgency] ?? 3)
-      }
       return new Date(b.createdAt) - new Date(a.createdAt)
     })
 
@@ -246,7 +249,6 @@ export default function AdminReports({ adminPermissions }) {
             </div>
           )}
           {paginated.map((r) => {
-            const urgency = URGENCY_LABEL[r.urgency] || URGENCY_LABEL.low
             const statusClass = STATUS_BADGE[r.status] || STATUS_BADGE.pending
             const statusLabel = STATUS_LABELS[r.status] || r.status.replace('_', ' ')
             const isExpanded = expanded === r._id
@@ -280,11 +282,12 @@ export default function AdminReports({ adminPermissions }) {
                       />
                     </label>
                   )}
-                  <button
-                    onClick={() => {
-                      const next = isExpanded ? null : r._id
-                      setExpanded(next)
-                    }}
+                    <button
+                      onClick={() => {
+                        const next = isExpanded ? null : r._id
+                        setExpanded(next)
+                        if (next) fetchNotes(next)
+                      }}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left"
                   >
                   <span>{(() => { const Icon = CATEGORY_ICONS[r.category] || ClipboardIcon; return <Icon className="w-5 h-5 text-gray-600 shrink-0" />; })()}</span>
@@ -293,9 +296,6 @@ export default function AdminReports({ adminPermissions }) {
                       <span className="text-sm font-bold text-gray-900">{r.name}</span>
                       <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusClass}`}>
                         {statusLabel}
-                      </span>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${urgency.class}`}>
-                        {urgency.label}
                       </span>
                       {r.assignedUser && (
                         <span className="rounded-full bg-indigo-100 text-indigo-800 px-2 py-0.5 text-[11px] font-bold border border-indigo-300 inline-flex items-center gap-1">
@@ -366,6 +366,28 @@ export default function AdminReports({ adminPermissions }) {
                         <div className="overflow-hidden rounded-lg border border-gray-200">
                           <ReportMap latitude={r.latitude} longitude={r.longitude} label={r.animalType} />
                         </div>
+                      </div>
+                    )}
+
+                    {notes[r._id] && notes[r._id].length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Rescuer Notes</p>
+                        <div className="space-y-2">
+                          {notes[r._id].map((n, i) => (
+                            <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                              <p className="text-xs text-gray-500 mb-0.5">
+                                {n.userName} &middot; {new Date(n.createdAt).toLocaleString()}
+                              </p>
+                              <p className="text-sm text-gray-800 whitespace-pre-wrap">{n.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {notesLoading[r._id] && (
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-400">Loading notes...</p>
                       </div>
                     )}
 

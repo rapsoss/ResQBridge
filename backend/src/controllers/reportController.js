@@ -3,14 +3,6 @@ const { anyApi } = require("convex/server");
 const { logEvent } = require("../middleware/logAudit");
 const { notifyAdmin } = require("../services/adminNotification");
 
-const URGENCY_MAP = {
-  Healthy: "low",
-  Injured: "high",
-  Sick: "high",
-  Trapped: "high",
-  Unknown: "high",
-};
-
 const submitReport = async (req, res) => {
   try {
   const { name, phone, category, animalType, wildlifeCondition, location, description, latitude, longitude, quantity } = req.body;
@@ -31,8 +23,6 @@ const submitReport = async (req, res) => {
     return res.status(400).json({ message: "Description is required and must be at most 2000 characters." });
   }
 
-  const urgency = URGENCY_MAP[wildlifeCondition] || "medium";
-
   const qty = quantity ? parseInt(quantity, 10) : undefined;
   if (qty !== undefined && (isNaN(qty) || qty < 1)) {
     return res.status(400).json({ message: "Quantity must be a positive number." });
@@ -49,7 +39,6 @@ const submitReport = async (req, res) => {
     category: category || "other",
     animalType,
     wildlifeCondition,
-    urgency,
     location,
     description,
     images,
@@ -64,7 +53,6 @@ const submitReport = async (req, res) => {
     phone,
     category: category || "other",
     animalType,
-    urgency,
     quantity: qty,
     location,
     description,
@@ -77,7 +65,7 @@ const submitReport = async (req, res) => {
 
   await notifyAdmin({
     type: "new_report",
-    message: `New ${urgency} ${animalType} report from ${name || "Anonymous"} at ${location}`,
+    message: `New ${animalType} report from ${name || "Anonymous"} at ${location}`,
     link: "/admin/dashboard/reports",
   });
 

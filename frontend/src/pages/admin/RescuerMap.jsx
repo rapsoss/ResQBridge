@@ -434,11 +434,6 @@ export default function RescuerMap() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-400">
-                        {rep.urgency && (
-                          <span className={`font-bold ${rep.urgency === 'high' || rep.urgency === 'critical' ? 'text-red-500' : 'text-gray-500'}`}>
-                            {rep.urgency}
-                          </span>
-                        )}
                         <span>{new Date(rep.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     </div>

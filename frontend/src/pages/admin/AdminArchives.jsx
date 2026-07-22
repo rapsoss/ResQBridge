@@ -1,16 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { admin as adminApi } from '../../services/api'
 
-const urgencyBadge = {
-  high: 'bg-red-50 text-red-700 ring-red-600/20',
-  low: 'bg-green-50 text-green-700 ring-green-600/20',
-}
-
-const urgencyLabels = {
-  high: 'High',
-  low: 'Low',
-}
-
 const statusBadge = {
   pending: 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
   assigned: 'bg-blue-50 text-blue-700 ring-blue-600/20',
@@ -133,9 +123,6 @@ export default function AdminArchives() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-sm font-semibold text-gray-900">{r.animalType}</h3>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${urgencyBadge[r.urgency] || 'bg-gray-50 text-gray-700'}`}>
-                      {urgencyLabels[r.urgency] || r.urgency}
-                    </span>
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${statusBadge[r.status] || 'bg-gray-50 text-gray-700'}`}>
                       {r.status?.replace(/_/g, ' ')}
                     </span>

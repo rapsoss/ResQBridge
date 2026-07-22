@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLocationContext } from '../../context/LocationContext'
@@ -23,11 +23,6 @@ const BADGE_LABELS = {
   transport_to_pwrccc: 'Transport to PWRCCC',
   resolved: 'Successful',
   failed: 'Failed',
-}
-
-const URGENCY_LABEL = {
-  low: { label: 'Low', class: 'bg-gray-100 text-gray-700' },
-  high: { label: 'High', class: 'bg-red-100 text-red-800 font-bold' },
 }
 
 const CATEGORY_ICONS = {
@@ -74,6 +69,8 @@ export default function RescuerAssignments() {
   const [showFailInput, setShowFailInput] = useState(new Set())
   const [postReport, setPostReport] = useState({})
   const [showPostReport, setShowPostReport] = useState(new Set())
+  const cameraRef = useRef(null)
+  const fileRef = useRef(null)
   const [uploadingId, setUploadingId] = useState(null)
   const [uploadedImages, setUploadedImages] = useState({})
   const [selectedReport, setSelectedReport] = useState(null)
@@ -180,8 +177,8 @@ export default function RescuerAssignments() {
     finally { setActionLoading(null) }
   }
 
-  const OUTCOME_OPTIONS = ['Released to wild', 'Transferred to vet', 'Transferred to wildlife center', 'Deceased', 'Escaped', 'Other']
-  const ACTION_OPTIONS = ['First aid administered', 'Animal captured/contained', 'Animal transported', 'Released on-site', 'Sedated', 'Tagged/identified', 'Area secured']
+  const OUTCOME_OPTIONS = ['Released to wild', 'Deceased', 'Escaped', 'Other']
+  const ACTION_OPTIONS = ['First aid administered', 'Sedated']
   const CONDITION_OPTIONS = ['Critical', 'Poor', 'Fair', 'Good', 'Excellent']
 
   async function handleResolve(reportId) {
@@ -230,6 +227,14 @@ export default function RescuerAssignments() {
     finally { setActionLoading(null) }
   }
 
+  async function handleRemoveImage(reportId, imageUrl) {
+    setUploadedImages((prev) => ({
+      ...prev,
+      [reportId]: (prev[reportId] || []).filter((u) => u !== imageUrl),
+    }))
+    rescuerApi.removeReportImage(reportId, imageUrl).catch(() => {})
+  }
+
   async function handleImageUpload(reportId, file) {
     setUploadingId(reportId)
     try {
@@ -242,10 +247,12 @@ export default function RescuerAssignments() {
       })
       const data = await res.json()
       if (data.url) {
+        const displayUrl = data.signedUrl || data.url
         setUploadedImages((prev) => ({
           ...prev,
-          [reportId]: [...(prev[reportId] || []), data.url],
+          [reportId]: [...(prev[reportId] || []), displayUrl],
         }))
+        rescuerApi.saveReportImages(reportId, [data.url]).catch(() => {})
       }
     } catch { alert('Failed to upload image.') }
     finally { setUploadingId(null) }
@@ -335,13 +342,11 @@ export default function RescuerAssignments() {
                     <th className="px-5 py-4">Animal</th>
                     <th className="px-5 py-4">Location</th>
                     <th className="px-5 py-4">Status</th>
-                    <th className="px-5 py-4">Urgency</th>
                     <th className="px-5 py-4">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {paginatedReports.map((r) => {
-                    const urgency = URGENCY_LABEL[r.urgency] || URGENCY_LABEL.low
                     const badgeKey = statusBadgeKey(r.status)
                     const badgeClass = BADGES[badgeKey] || BADGES.new
                     const badgeLabel = BADGE_LABELS[badgeKey]
@@ -372,11 +377,6 @@ export default function RescuerAssignments() {
                             {badgeLabel}
                           </span>
                         </td>
-                        <td className="px-5 py-4">
-                          <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-bold ${urgency.class}`}>
-                            {urgency.label}
-                          </span>
-                        </td>
                         <td className="px-5 py-4 text-gray-500 text-xs whitespace-nowrap">
                           {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </td>
@@ -390,7 +390,6 @@ export default function RescuerAssignments() {
             {/* Mobile cards */}
             <div className="block md:hidden space-y-3">
               {paginatedReports.map((r) => {
-                const urgency = URGENCY_LABEL[r.urgency] || URGENCY_LABEL.low
                 const badgeKey = statusBadgeKey(r.status)
                 const badgeClass = BADGES[badgeKey] || BADGES.new
                 const badgeLabel = BADGE_LABELS[badgeKey]
@@ -410,9 +409,6 @@ export default function RescuerAssignments() {
                           <span className="font-semibold text-gray-900 text-sm">{r.name}</span>
                           <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${badgeClass}`}>
                             {badgeLabel}
-                          </span>
-                          <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${urgency.class}`}>
-                            {urgency.label}
                           </span>
                         </div>
                         <p className="text-sm text-gray-600 mt-1 truncate">{r.location}</p>
@@ -437,7 +433,6 @@ export default function RescuerAssignments() {
             >
               {selectedReport && (() => {
                 const r = selectedReport
-                const urgency = URGENCY_LABEL[r.urgency] || URGENCY_LABEL.low
                 const isAccepted = acceptedIds.has(r._id)
                 const badgeKey = statusBadgeKey(r.status)
                 const badgeClass = BADGES[badgeKey] || BADGES.new
@@ -447,7 +442,7 @@ export default function RescuerAssignments() {
                 const showInitial = !isAccepted && r.status !== 'en_route' && r.status !== 'in_progress' && r.status !== 'resolved' && r.status !== 'failed'
                 const showEnRoute = !showInitial && !hasArrived && (isAccepted || r.status === 'en_route')
                 const showPostArrival = hasArrived
-                const reportImages = uploadedImages[r._id] || []
+                const reportImages = [...new Set([...(r.images || []), ...(uploadedImages[r._id] || [])])]
 
                 const distInfo = getDistanceInfo(userPos, r.latitude, r.longitude)
                 const isNearSite = distInfo && distInfo.dist <= 0.05
@@ -456,7 +451,6 @@ export default function RescuerAssignments() {
                   <div className="max-h-[75vh] overflow-y-auto space-y-5">
                     <div className="flex flex-wrap items-center gap-3">
                       <span className={`rounded-full border-2 px-3 py-1 text-sm font-bold ${badgeClass}`}>{badgeLabel}</span>
-                      <span className={`rounded-full px-3 py-1 text-sm font-bold ${urgency.class}`}>{urgency.label}</span>
                       <span className="text-sm text-gray-500">{r.animalType}</span>
                       <span className="text-sm text-gray-400">
                         {r.location}
@@ -487,10 +481,6 @@ export default function RescuerAssignments() {
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Location</p>
                         <p className="mt-0.5 font-semibold text-gray-900">{r.location}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Urgency</p>
-                        <p className={`mt-0.5 font-semibold ${urgency.class}`}>{urgency.label}</p>
                       </div>
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Submitted</p>
@@ -651,22 +641,60 @@ export default function RescuerAssignments() {
                             )}
 
                             <div className="flex flex-wrap items-center gap-2">
-                              <label className="inline-flex items-center gap-1.5 cursor-pointer rounded-xl bg-gray-100 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-200 border-2 border-gray-300">
-                                {uploadingId === r._id ? 'Uploading...' : <><CameraIcon className="w-4 h-4" /> Add Photo</>}
-                                <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden"
-                                  disabled={uploadingId === r._id}
-                                  onChange={(e) => {
-                                    const file = e.target.files[0]
-                                    if (file) handleImageUpload(r._id, file)
-                                    e.target.value = ''
-                                  }}
-                                />
-                              </label>
+                              <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+                                onChange={(e) => {
+                                  const files = Array.from(e.target.files || [])
+                                  files.forEach((file) => handleImageUpload(r._id, file))
+                                  e.target.value = ''
+                                }}
+                              />
+                              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+                                onChange={(e) => {
+                                  const files = Array.from(e.target.files || [])
+                                  files.forEach((file) => handleImageUpload(r._id, file))
+                                  e.target.value = ''
+                                }}
+                              />
+                              <button type="button" disabled={uploadingId === r._id} onClick={() => cameraRef.current?.click()}
+                                className="flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 transition hover:border-green-500 hover:text-green-600 disabled:opacity-50"
+                              >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                                </svg>
+                                Take Photo
+                              </button>
+                              <button type="button" disabled={uploadingId === r._id} onClick={() => fileRef.current?.click()}
+                                className="flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 transition hover:border-green-500 hover:text-green-600 disabled:opacity-50"
+                              >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                                </svg>
+                                Choose from Gallery
+                              </button>
                             </div>
+                            {uploadingId === r._id && (
+                              <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                Uploading...
+                              </div>
+                            )}
                             {reportImages.length > 0 && (
                               <div className="flex flex-wrap gap-2">
                                 {reportImages.map((url, i) => (
-                                  <img key={i} src={url} alt={`Photo ${i + 1}`} className="h-20 w-20 rounded-xl object-cover border-2 border-gray-200" />
+                                  <div key={i} className="relative group">
+                                    <img src={url} alt={`Photo ${i + 1}`} className="h-20 w-20 rounded-xl object-cover border-2 border-gray-200" />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveImage(r._id, url)}
+                                      className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow"
+                                    >
+                                      &times;
+                                    </button>
+                                  </div>
                                 ))}
                               </div>
                             )}
