@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { DoubleConfirmation, Modal, SkeletonCard } from '../../components/ui'
 import { admin as adminApi } from '../../services/api'
 import { MedicalIcon, StrandedIcon, SearchIcon, PawIcon, HouseIcon, ClipboardIcon } from '../../components/SvgIcons'
@@ -48,7 +49,18 @@ export default function AdminReports({ adminPermissions }) {
   const [assignTarget, setAssignTarget] = useState({})
   const [notes, setNotes] = useState({})
   const [notesLoading, setNotesLoading] = useState({})
+  const location = useLocation()
   const pageSize = 10
+
+  useEffect(() => {
+    if (location.state?.reportId) {
+      setExpanded(location.state.reportId)
+      setTimeout(() => {
+        document.getElementById(`report-${location.state.reportId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 300)
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
 
   useEffect(() => {
     Promise.allSettled([
@@ -257,6 +269,7 @@ export default function AdminReports({ adminPermissions }) {
             return (
               <div
                 key={r._id}
+                id={`report-${r._id}`}
                 className={`rounded-lg border transition-all ${
                   isExpanded
                     ? 'border-green-500 shadow bg-white'

@@ -68,7 +68,7 @@ const submitReport = async (req, res) => {
 
   const clientIp = req.ip || req.connection?.remoteAddress || "unknown";
 
-  await convexClient.mutation(anyApi.reports.insertReport, {
+  const reportId = await convexClient.mutation(anyApi.reports.insertReport, {
     name: name || "Anonymous",
     phone,
     category: category || "other",
@@ -86,6 +86,7 @@ const submitReport = async (req, res) => {
   await notifyAdmin({
     type: "new_report",
     message: `New ${animalType} report from ${name || "Anonymous"} at ${location}`,
+    reportId,
     link: "/admin/dashboard/reports",
   });
 

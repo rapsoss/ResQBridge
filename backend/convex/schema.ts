@@ -83,6 +83,7 @@ export default defineSchema({
   adminNotifications: defineTable({
     type: v.string(),
     message: v.string(),
+    reportId: v.optional(v.string()),
     link: v.optional(v.string()),
     read: v.boolean(),
     createdAt: v.number(),
