@@ -340,7 +340,7 @@ export default function RescuerAssignments() {
                 <thead className="border-b-2 border-gray-200 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-500">
                   <tr>
                     <th className="px-5 py-4">Animal</th>
-                    <th className="px-5 py-4">Location</th>
+                    <th className="px-5 py-4">Landmark</th>
                     <th className="px-5 py-4">Status</th>
                     <th className="px-5 py-4">Date</th>
                   </tr>
@@ -479,7 +479,7 @@ export default function RescuerAssignments() {
                         <p className="mt-0.5 font-semibold text-gray-900">{r.animalType}{r.quantity ? ` \u00d7 ${r.quantity}` : ''}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Location</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Landmark</p>
                         <p className="mt-0.5 font-semibold text-gray-900">{r.location}</p>
                       </div>
                       <div>

@@ -188,7 +188,7 @@ const getStats = async (req, res) => {
       if (r.status === 'failed') monthlyMap[key].failed++
     }
 
-    const cat = r.animalName || 'Unknown'
+    const cat = r.animalType || r.name || 'Unknown'
     categoryMap[cat] = (categoryMap[cat] || 0) + 1
   }
   const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;

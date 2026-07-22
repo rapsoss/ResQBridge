@@ -332,7 +332,7 @@ export default function AdminReports({ adminPermissions }) {
                         <p className="text-sm text-gray-900 mt-0.5">{r.animalType}{r.quantity ? ` \u00d7 ${r.quantity}` : ''}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Location</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Landmark</p>
                         <p className="text-sm text-gray-900 mt-0.5">{r.location}</p>
                       </div>
                     </div>
@@ -369,21 +369,133 @@ export default function AdminReports({ adminPermissions }) {
                       </div>
                     )}
 
-                    {notes[r._id] && notes[r._id].length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Rescuer Notes</p>
-                        <div className="space-y-2">
-                          {notes[r._id].map((n, i) => (
-                            <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                              <p className="text-xs text-gray-500 mb-0.5">
-                                {n.userName} &middot; {new Date(n.createdAt).toLocaleString()}
-                              </p>
-                              <p className="text-sm text-gray-800 whitespace-pre-wrap">{n.content}</p>
+                    {notes[r._id]?.length > 0 && (() => {
+                      const postNotes = []
+                      const diaryNotes = []
+                      const failureNotes = []
+                      const otherNotes = []
+                      notes[r._id].forEach(n => {
+                        if (n.content.startsWith('Post-Rescue Report:')) postNotes.push(n)
+                        else if (n.content.startsWith('Rescue Diary:')) diaryNotes.push(n)
+                        else if (n.content.startsWith('Failure Reason:')) failureNotes.push(n)
+                        else otherNotes.push(n)
+                      })
+
+                      function parsePostReport(content) {
+                        const lines = content.replace('Post-Rescue Report:\n', '').split('\n')
+                        const fields = {}
+                        lines.forEach(line => {
+                          const idx = line.indexOf(': ')
+                          if (idx > 0) {
+                            const key = line.slice(0, idx).trim()
+                            const val = line.slice(idx + 2).trim()
+                            if (key) fields[key] = val
+                          }
+                        })
+                        return fields
+                      }
+
+                      return (<>
+                        {postNotes.map((n, i) => {
+                          const fields = parsePostReport(n.content)
+                          return (
+                            <div key={`post-${i}`} className="mt-3">
+                              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Post-Rescue Report</p>
+                              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 space-y-2">
+                                {fields['Condition on arrival'] && (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-gray-600">Condition on arrival</span>
+                                    <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                                      fields['Condition on arrival'] === 'Critical' ? 'bg-red-100 text-red-800' :
+                                      fields['Condition on arrival'] === 'Poor' ? 'bg-orange-100 text-orange-800' :
+                                      fields['Condition on arrival'] === 'Fair' ? 'bg-yellow-100 text-yellow-800' :
+                                      fields['Condition on arrival'] === 'Good' ? 'bg-green-100 text-green-800' :
+                                      fields['Condition on arrival'] === 'Excellent' ? 'bg-emerald-100 text-emerald-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>{fields['Condition on arrival']}</span>
+                                  </div>
+                                )}
+                                {fields['Actions taken'] && (
+                                  <div>
+                                    <span className="text-xs font-semibold text-gray-600 block">Actions taken</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {fields['Actions taken'].split(', ').map((a, ai) => (
+                                        <span key={ai} className="text-xs bg-white border border-blue-300 text-blue-800 px-2 py-0.5 rounded-full">{a}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {fields['Outcome'] && (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-gray-600">Outcome</span>
+                                    <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                                      fields['Outcome'] === 'Released to wild' ? 'bg-green-100 text-green-800' :
+                                      fields['Outcome'] === 'Deceased' ? 'bg-red-100 text-red-800' :
+                                      fields['Outcome'] === 'Escaped' ? 'bg-orange-100 text-orange-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>{fields['Outcome']}</span>
+                                  </div>
+                                )}
+                                {fields['Environmental conditions'] && (
+                                  <div>
+                                    <span className="text-xs font-semibold text-gray-600 block">Environmental conditions</span>
+                                    <p className="text-sm text-gray-700 mt-0.5">{fields['Environmental conditions']}</p>
+                                  </div>
+                                )}
+                                {fields['Other responders'] && (
+                                  <div>
+                                    <span className="text-xs font-semibold text-gray-600 block">Other responders</span>
+                                    <p className="text-sm text-gray-700 mt-0.5">{fields['Other responders']}</p>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                          )
+                        })}
+
+                        {diaryNotes.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Rescue Diary</p>
+                            <div className="space-y-2">
+                              {diaryNotes.map((n, i) => (
+                                <div key={`diary-${i}`} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                                  <p className="text-xs text-gray-500 mb-1">{n.userName} &middot; {new Date(n.createdAt).toLocaleString()}</p>
+                                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{n.content.replace('Rescue Diary: ', '')}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {failureNotes.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Failure Reason</p>
+                            <div className="space-y-2">
+                              {failureNotes.map((n, i) => (
+                                <div key={`fail-${i}`} className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                                  <p className="text-xs text-gray-500 mb-1">{n.userName} &middot; {new Date(n.createdAt).toLocaleString()}</p>
+                                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{n.content.replace('Failure Reason: ', '')}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {otherNotes.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Other Notes</p>
+                            <div className="space-y-2">
+                              {otherNotes.map((n, i) => (
+                                <div key={`note-${i}`} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                                  <p className="text-xs text-gray-500 mb-0.5">{n.userName} &middot; {new Date(n.createdAt).toLocaleString()}</p>
+                                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{n.content}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>)
+                    })()}
 
                     {notesLoading[r._id] && (
                       <div className="mt-3">

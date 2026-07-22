@@ -1,7 +1,10 @@
+const sharp = require("sharp");
 const convexClient = require("../config/convex");
 const { anyApi } = require("convex/server");
 const { logEvent } = require("../middleware/logAudit");
 const { notifyAdmin } = require("../services/adminNotification");
+const { uploadToCloudinary } = require("./uploadController");
+const { v4: uuidv4 } = require("uuid");
 
 const submitReport = async (req, res) => {
   try {
@@ -31,7 +34,24 @@ const submitReport = async (req, res) => {
   const lat = latitude ? parseFloat(latitude) : undefined;
   const lng = longitude ? parseFloat(longitude) : undefined;
 
-  const images = [];
+  const imagePublicIds = [];
+  if (req.files && req.files.length > 0) {
+    for (const file of req.files) {
+      try {
+        const processed = await sharp(file.buffer)
+          .resize({ width: 1920, withoutEnlargement: true })
+          .jpeg({ quality: 80, mozjpeg: true })
+          .toBuffer();
+        const result = await uploadToCloudinary(processed, {
+          folder: "resqbridge/images",
+          public_id: uuidv4(),
+          resource_type: "image",
+          type: "authenticated",
+        });
+        imagePublicIds.push(result.public_id);
+      } catch {}
+    }
+  }
 
   const metadata = {
     name: name || "Anonymous",
@@ -41,7 +61,7 @@ const submitReport = async (req, res) => {
     wildlifeCondition,
     location,
     description,
-    images,
+    images: imagePublicIds,
   };
 
   await logEvent({ req, eventType: "report_animal", metadata });
@@ -56,7 +76,7 @@ const submitReport = async (req, res) => {
     quantity: qty,
     location,
     description,
-    images: images.length > 0 ? images.join(",") : undefined,
+    images: imagePublicIds.length > 0 ? imagePublicIds.join(",") : undefined,
     latitude: lat,
     longitude: lng,
     status: "pending",
@@ -69,7 +89,7 @@ const submitReport = async (req, res) => {
     link: "/admin/dashboard/reports",
   });
 
-  res.status(201).json({ message: "Report submitted successfully.", images });
+  res.status(201).json({ message: "Report submitted successfully.", imageCount: imagePublicIds.length });
 } catch (err) {
   console.error("submitReport error:", err);
   res.status(500).json({ message: "Internal server error: " + err.message });

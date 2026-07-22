@@ -144,6 +144,7 @@ const getAdminReports = async (req, res) => {
     phone: r.phone || "",
     category: r.category || "other",
     animalType: r.animalName || r.animalType,
+    quantity: r.quantity ?? null,
     location: r.location,
     description: r.description,
     images: r.images ? resolveImageUrls(r.images) : [],
