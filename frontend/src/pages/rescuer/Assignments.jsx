@@ -228,11 +228,17 @@ export default function RescuerAssignments() {
   }
 
   async function handleRemoveImage(reportId, imageUrl) {
+    const pending = uploadedImages[reportId] || []
+    const match = pending.find((u) => u.url === imageUrl)
     setUploadedImages((prev) => ({
       ...prev,
-      [reportId]: (prev[reportId] || []).filter((u) => u !== imageUrl),
+      [reportId]: prev[reportId] ? prev[reportId].filter((u) => u.url !== imageUrl) : [],
     }))
-    rescuerApi.removeReportImage(reportId, imageUrl).catch(() => {})
+    if (match) {
+      rescuerApi.removeReportImage(reportId, match.publicId).catch(() => {})
+    } else {
+      rescuerApi.removeReportImage(reportId, imageUrl).catch(() => {})
+    }
   }
 
   async function handleImageUpload(reportId, file) {
@@ -468,6 +474,14 @@ export default function RescuerAssignments() {
 
                     {r.description && <p className="text-gray-700">{r.description}</p>}
 
+                    {reporterImages.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {reporterImages.map((url, i) => (
+                          <img key={`rep-${i}`} src={url} alt="" className="h-20 w-20 rounded-xl object-cover border-2 border-blue-200" />
+                        ))}
+                      </div>
+                    )}
+
                     <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-4 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
                       <div>
                         <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Reporter</p>
@@ -684,16 +698,6 @@ export default function RescuerAssignments() {
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                 </svg>
                                 Uploading...
-                              </div>
-                            )}
-                            {reporterImages.length > 0 && (
-                              <div>
-                                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">Reporter Photos</p>
-                                <div className="flex flex-wrap gap-2">
-                                  {reporterImages.map((url, i) => (
-                                    <img key={`rep-${i}`} src={url} alt="" className="h-20 w-20 rounded-xl object-cover border-2 border-blue-200" />
-                                  ))}
-                                </div>
                               </div>
                             )}
                             {allRescuerImages.length > 0 && (
