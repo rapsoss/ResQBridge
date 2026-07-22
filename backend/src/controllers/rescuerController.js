@@ -386,9 +386,11 @@ const saveImages = async (req, res) => {
 
   const existing = report.images ? report.images.split(",").filter(Boolean) : [];
   const merged = [...existing, ...images];
+  const stored = merged.join(",");
+  console.log("[saveImages] existing:", existing, "new:", images, "stored:", stored);
   await convexClient.mutation(anyApi.reports.updateReportImages, {
     reportId: id,
-    images: merged.join(","),
+    images: stored,
   });
 
   res.json({ message: "Images saved." });

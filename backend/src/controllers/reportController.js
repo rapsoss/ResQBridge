@@ -49,7 +49,9 @@ const submitReport = async (req, res) => {
           type: "authenticated",
         });
         imagePublicIds.push(result.public_id);
-      } catch {}
+      } catch (err) {
+        console.error("Image upload error:", err?.message || err);
+      }
     }
   }
 

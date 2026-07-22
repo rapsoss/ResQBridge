@@ -155,6 +155,13 @@ const getAdminReports = async (req, res) => {
     longitude: r.longitude ?? null,
     createdAt: r.createdAt,
   }));
+  const withImages = mapped.filter(r => r.images.length > 0)
+  if (withImages.length > 0) {
+    console.log("[adminReports] reports with images:", withImages.length, "first:", withImages[0].images)
+  } else {
+    const withRaw = reports.filter(r => r.images)
+    console.log("[adminReports] reports with raw images field:", withRaw.length, "samples:", withRaw.slice(0,3).map(r => ({ id: r._id, images: r.images })))
+  }
   res.json({ reports: mapped });
 };
 
