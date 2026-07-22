@@ -478,10 +478,10 @@ export default function RescuerAssignments() {
                     {reporterImages.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {reporterImages.map((url, i) => (
-                          <a key={`rep-${i}`} href={url} target="_blank" rel="noopener noreferrer"
-                            className="group relative overflow-hidden rounded-xl border-2 border-blue-200">
+                          <button key={`rep-${i}`} type="button" onClick={() => setPreviewImage(url)}
+                            className="group relative overflow-hidden rounded-xl border-2 border-blue-200 p-0 cursor-pointer">
                             <img src={url} alt="" className="h-20 w-20 object-cover transition group-hover:scale-105" />
-                          </a>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -710,10 +710,10 @@ export default function RescuerAssignments() {
                                 <div className="flex flex-wrap gap-2">
                                   {allRescuerImages.map((url, i) => (
                                     <div key={`res-${i}`} className="relative group">
-                                      <a href={url} target="_blank" rel="noopener noreferrer"
-                                        className="block overflow-hidden rounded-xl border-2 border-green-200">
+                                      <button type="button" onClick={() => setPreviewImage(url)}
+                                        className="block overflow-hidden rounded-xl border-2 border-green-200 p-0 cursor-pointer">
                                         <img src={url} alt="" className="h-20 w-20 object-cover transition group-hover:scale-105" />
-                                      </a>
+                                      </button>
                                       <button
                                         type="button"
                                         onClick={(e) => { e.preventDefault(); handleRemoveImage(r._id, url) }}
@@ -784,6 +784,15 @@ export default function RescuerAssignments() {
               })()}
             </Modal>
           </>
+        )}
+
+        {previewImage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewImage(null)}>
+            <button type="button" onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white text-2xl hover:bg-white/40 transition-colors z-10"
+            >&times;</button>
+            <img src={previewImage} alt="" className="max-h-full max-w-full rounded-xl object-contain" onClick={(e) => e.stopPropagation()} />
+          </div>
         )}
         {totalPages > 1 && (
           <div className="mt-6 flex items-center justify-center gap-2">
