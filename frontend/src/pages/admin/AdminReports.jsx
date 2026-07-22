@@ -478,6 +478,7 @@ export default function AdminReports({ adminPermissions }) {
                                       fields['Outcome'] === 'Released to wild' ? 'bg-green-100 text-green-800' :
                                       fields['Outcome'] === 'Deceased' ? 'bg-red-100 text-red-800' :
                                       fields['Outcome'] === 'Escaped' ? 'bg-orange-100 text-orange-800' :
+                                      fields['Outcome'] === 'Captured' ? 'bg-purple-100 text-purple-800' :
                                       'bg-gray-100 text-gray-800'
                                     }`}>{fields['Outcome']}</span>
                                   </div>

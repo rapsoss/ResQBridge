@@ -178,7 +178,7 @@ export default function RescuerAssignments() {
     finally { setActionLoading(null) }
   }
 
-  const OUTCOME_OPTIONS = ['Released to wild', 'Deceased', 'Escaped', 'Other']
+  const OUTCOME_OPTIONS = ['Released to wild', 'Deceased', 'Escaped', 'Captured', 'Other']
   const ACTION_OPTIONS = ['First aid administered', 'Sedated']
   const CONDITION_OPTIONS = ['Critical', 'Poor', 'Fair', 'Good', 'Excellent']
 
