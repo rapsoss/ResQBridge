@@ -74,6 +74,7 @@ export default function RescuerAssignments() {
   const [uploadingId, setUploadingId] = useState(null)
   const [uploadedImages, setUploadedImages] = useState({})
   const [selectedReport, setSelectedReport] = useState(null)
+  const [previewImage, setPreviewImage] = useState(null)
   const [page, setPage] = useState(1)
   const pageSize = 10
 
@@ -477,7 +478,10 @@ export default function RescuerAssignments() {
                     {reporterImages.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {reporterImages.map((url, i) => (
-                          <img key={`rep-${i}`} src={url} alt="" className="h-20 w-20 rounded-xl object-cover border-2 border-blue-200" />
+                          <a key={`rep-${i}`} href={url} target="_blank" rel="noopener noreferrer"
+                            className="group relative overflow-hidden rounded-xl border-2 border-blue-200">
+                            <img src={url} alt="" className="h-20 w-20 object-cover transition group-hover:scale-105" />
+                          </a>
                         ))}
                       </div>
                     )}
@@ -706,10 +710,13 @@ export default function RescuerAssignments() {
                                 <div className="flex flex-wrap gap-2">
                                   {allRescuerImages.map((url, i) => (
                                     <div key={`res-${i}`} className="relative group">
-                                      <img src={url} alt="" className="h-20 w-20 rounded-xl object-cover border-2 border-green-200" />
+                                      <a href={url} target="_blank" rel="noopener noreferrer"
+                                        className="block overflow-hidden rounded-xl border-2 border-green-200">
+                                        <img src={url} alt="" className="h-20 w-20 object-cover transition group-hover:scale-105" />
+                                      </a>
                                       <button
                                         type="button"
-                                        onClick={() => handleRemoveImage(r._id, url)}
+                                        onClick={(e) => { e.preventDefault(); handleRemoveImage(r._id, url) }}
                                         className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow"
                                       >
                                         &times;
