@@ -110,22 +110,26 @@ const login = async (req, res) => {
   const trimmed = email.trim();
   const isPhone = !trimmed.includes("@") && /^[\d\s+\-()]{7,20}$/.test(trimmed);
 
-  const identifier = isPhone ? normalizePhone(trimmed) : trimmed.toLowerCase();
+  const normalized = isPhone ? normalizePhone(trimmed) : trimmed.toLowerCase();
 
-  const failKey = `login:${identifier}`;
+  const failKey = `login:${normalized}`;
   const attempts = failedAttempts.get(failKey) || 0;
   if (attempts >= 5) {
     throw new AppError("Account temporarily locked. Try again later.", 429);
   }
 
-  const user = isPhone
-    ? await convexClient.query(anyApi.users.getUserByPhoneNumber, { phoneNumber: identifier })
-    : await convexClient.query(anyApi.users.getUserByEmail, { email: identifier });
+  let user = isPhone
+    ? await convexClient.query(anyApi.users.getUserByPhoneNumber, { phoneNumber: normalized })
+    : await convexClient.query(anyApi.users.getUserByEmail, { email: normalized });
+
+  if (!user && !isPhone && trimmed !== normalized) {
+    user = await convexClient.query(anyApi.users.getUserByEmail, { email: trimmed });
+  }
 
   if (!user) {
     failedAttempts.set(failKey, attempts + 1);
     setTimeout(() => { const c = failedAttempts.get(failKey); if (c && c <= attempts + 1) failedAttempts.delete(failKey); }, 15 * 60 * 1000);
-    await logEvent({ req, eventType: "login_attempt", metadata: { [isPhone ? "phone" : "email"]: identifier, reason: "user_not_found" } });
+    await logEvent({ req, eventType: "login_attempt", metadata: { [isPhone ? "phone" : "email"]: normalized, reason: "user_not_found" } });
     throw new AppError("Invalid email or password.", 401);
   }
 
@@ -133,7 +137,7 @@ const login = async (req, res) => {
   if (!isMatch) {
     failedAttempts.set(failKey, attempts + 1);
     setTimeout(() => { const c = failedAttempts.get(failKey); if (c && c <= attempts + 1) failedAttempts.delete(failKey); }, 15 * 60 * 1000);
-    await logEvent({ req, eventType: "login_attempt", metadata: { [isPhone ? "phone" : "email"]: identifier, reason: "wrong_password" } });
+    await logEvent({ req, eventType: "login_attempt", metadata: { [isPhone ? "phone" : "email"]: normalized, reason: "wrong_password" } });
     throw new AppError("Invalid email or password.", 401);
   }
 
