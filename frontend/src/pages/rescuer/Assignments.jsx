@@ -189,6 +189,10 @@ export default function RescuerAssignments() {
       alert('Please write a diary entry about how you executed the rescue.')
       return
     }
+    if (!report.animals && report.animals !== 0) {
+      alert('Please enter the number of animals.')
+      return
+    }
     setActionLoading(reportId)
     try {
       await rescuerApi.addNote(reportId, `Rescue Diary: ${diary}`)
@@ -196,7 +200,7 @@ export default function RescuerAssignments() {
         `Condition on arrival: ${report.condition || 'Not specified'}`,
         `Actions taken: ${report.actions?.length ? report.actions.join(', ') : 'None listed'}`,
         `Outcome: ${report.outcome || 'Not specified'}`,
-
+        `Number of animals: ${report.animals}`,
         `Environmental conditions: ${report.environment || 'Not specified'}`,
         `Other responders: ${report.responders || 'None'}`,
       ]
@@ -642,6 +646,16 @@ export default function RescuerAssignments() {
                                     <option value="">Select outcome</option>
                                     {OUTCOME_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                                   </select>
+                                </div>
+
+                                <div>
+                                  <label className="text-sm font-semibold text-gray-700">Number of animals</label>
+                                  <input type="number" min="0"
+                                    value={postReport[r._id]?.animals ?? ''}
+                                    onChange={(e) => setPostReport({ ...postReport, [r._id]: { ...postReport[r._id], animals: e.target.value } })}
+                                    placeholder="e.g. 3"
+                                    className="mt-1 w-full rounded-xl border-2 border-gray-300 px-4 py-2.5 text-sm focus:border-amber-600 focus:outline-none"
+                                  />
                                 </div>
 
                                 <div>

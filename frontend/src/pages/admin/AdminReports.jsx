@@ -483,6 +483,12 @@ export default function AdminReports({ adminPermissions }) {
                                     }`}>{fields['Outcome']}</span>
                                   </div>
                                 )}
+                                {fields['Number of animals'] && (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-gray-600">Number of animals</span>
+                                    <span className="text-sm font-bold text-gray-900">{fields['Number of animals']}</span>
+                                  </div>
+                                )}
                                 {fields['Environmental conditions'] && (
                                   <div>
                                     <span className="text-xs font-semibold text-gray-600 block">Environmental conditions</span>
