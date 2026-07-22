@@ -791,7 +791,7 @@ export default function RescuerAssignments() {
         )}
 
         {previewImage && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewImage(null)}>
+          <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewImage(null)}>
             <button type="button" onClick={() => setPreviewImage(null)}
               className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white text-2xl hover:bg-white/40 transition-colors z-10"
             >&times;</button>
