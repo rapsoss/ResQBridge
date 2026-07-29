@@ -143,7 +143,7 @@ export default function RescuerAssignments() {
       es.onmessage = (e) => {
         try {
           const event = JSON.parse(e.data)
-          if (event.type === 'report:claimed' || event.type === 'report:status') {
+          if (event.type === 'report:claimed' || event.type === 'report:status' || event.type === 'report:images') {
             fetchReports()
           }
         } catch {}

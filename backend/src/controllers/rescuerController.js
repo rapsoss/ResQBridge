@@ -143,6 +143,13 @@ const updateReportStatus = async (req, res) => {
     status,
   });
 
+  publish({
+    type: "report:status",
+    reportId: id,
+    userId,
+    status,
+  });
+
   const actionLabels = {
     en_route: "status:en_route",
     in_progress: "status:in_progress",
@@ -393,6 +400,11 @@ const saveImages = async (req, res) => {
   await convexClient.mutation(anyApi.reports.updateReportRescuerImages, {
     reportId: id,
     rescuerImages: stored,
+  });
+
+  publish({
+    type: "report:images",
+    reportId: id,
   });
 
   res.json({ message: "Images saved." });
